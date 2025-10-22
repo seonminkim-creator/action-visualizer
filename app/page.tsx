@@ -122,7 +122,18 @@ export default function ActionVisualizer() {
       <div style={{ margin: "0 auto", maxWidth: 960 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-            <h1 style={{ fontSize: "clamp(18px, 5vw, 24px)", fontWeight: 600, margin: 0 }}>タスクみえーるくん 👀</h1>
+            <h1 style={{ 
+              fontSize: "clamp(18px, 5vw, 24px)", 
+              fontWeight: 600, 
+              margin: 0,
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              color: "white",
+              padding: "8px 16px",
+              borderRadius: 8,
+              display: "inline-block"
+            }}>
+              タスクみえーるくん 👀
+            </h1>
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
               <label style={{ fontSize: 12, color: "#475569", whiteSpace: "nowrap" }}>名前:</label>
               <input
@@ -133,10 +144,11 @@ export default function ActionVisualizer() {
                 style={{ 
                   padding: "6px 10px", 
                   borderRadius: 6, 
-                  border: "1px solid #e5e7eb", 
+                  border: "1px solid #d1d5db", 
                   fontSize: 12,
                   width: "100px",
-                  maxWidth: "120px"
+                  maxWidth: "120px",
+                  background: "white"
                 }}
               />
             </div>
@@ -151,7 +163,17 @@ export default function ActionVisualizer() {
             placeholder="ここに文章を貼り付け（メール、議事録など）"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            style={{ minHeight: 150, padding: 12, borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 14, width: "100%", boxSizing: "border-box" }}
+            style={{ 
+              minHeight: 150, 
+              padding: 12, 
+              borderRadius: 8, 
+              border: "1px solid #d1d5db", 
+              fontSize: 14, 
+              width: "100%", 
+              boxSizing: "border-box",
+              background: "white",
+              color: "#1e293b"
+            }}
           />
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <button
