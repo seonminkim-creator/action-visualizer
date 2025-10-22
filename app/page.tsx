@@ -118,18 +118,22 @@ export default function ActionVisualizer() {
         @media (min-width: 768px) {
           .container { padding: 32px; }
         }
+        input::placeholder, textarea::placeholder {
+          color: #94a3b8;
+          opacity: 1;
+        }
       `}</style>
       <div style={{ margin: "0 auto", maxWidth: 960 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
             <h1 style={{ 
-              fontSize: "clamp(18px, 5vw, 24px)", 
+              fontSize: "clamp(14px, 4vw, 24px)", 
               fontWeight: 600, 
               margin: 0,
               background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
               color: "white",
-              padding: "8px 16px",
-              borderRadius: 8,
+              padding: "6px 12px",
+              borderRadius: 6,
               display: "inline-block"
             }}>
               タスクみえーるくん 👀
