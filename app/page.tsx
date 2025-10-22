@@ -109,50 +109,56 @@ export default function ActionVisualizer() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", padding: 32, background: "#f8fafc" }}>
+    <div style={{ minHeight: "100vh", padding: "16px", background: "#f8fafc" }}>
       <style>{`
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
+        @media (min-width: 768px) {
+          .container { padding: 32px; }
+        }
       `}</style>
       <div style={{ margin: "0 auto", maxWidth: 960 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <h1 style={{ fontSize: 24, fontWeight: 600, margin: 0 }}>タスクみえーるくん 👀</h1>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <label style={{ fontSize: 13, color: "#64748b" }}>あなたの名前:</label>
-            <input
-              type="text"
-              value={userName}
-              onChange={(e) => setUserName(e.target.value)}
-              placeholder="例: 田中太郎"
-              style={{ 
-                padding: "6px 12px", 
-                borderRadius: 6, 
-                border: "1px solid #e5e7eb", 
-                fontSize: 13,
-                width: 140
-              }}
-            />
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+            <h1 style={{ fontSize: "clamp(18px, 5vw, 24px)", fontWeight: 600, margin: 0 }}>タスクみえーるくん 👀</h1>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+              <label style={{ fontSize: 12, color: "#64748b", whiteSpace: "nowrap" }}>名前:</label>
+              <input
+                type="text"
+                value={userName}
+                onChange={(e) => setUserName(e.target.value)}
+                placeholder="例: 田中"
+                style={{ 
+                  padding: "6px 10px", 
+                  borderRadius: 6, 
+                  border: "1px solid #e5e7eb", 
+                  fontSize: 12,
+                  width: "100px",
+                  maxWidth: "120px"
+                }}
+              />
+            </div>
           </div>
+          <p style={{ color: "#6b7280", fontSize: 13, margin: 0 }}>
+            {loading ? "タスクを整理中です…" : "文章を貼り付けて、今やるべきことを見える化"}
+          </p>
         </div>
-        <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 16 }}>
-          {loading ? "タスクを整理中です…少々お待ちください" : "文章を貼り付けて、今やるべきことを見える化しましょう"}
-        </p>
 
         <div style={{ display: "grid", gap: 12 }}>
           <textarea
-            placeholder="ここに文章を貼り付け（メール、議事録、依頼文など何でもOK！）"
+            placeholder="ここに文章を貼り付け（メール、議事録など）"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            style={{ minHeight: 200, padding: 12, borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 14 }}
+            style={{ minHeight: 150, padding: 12, borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 14, width: "100%", boxSizing: "border-box" }}
           />
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <button
               onClick={analyze}
               disabled={loading || !input.trim()}
               style={{
-                padding: "10px 16px",
+                padding: "10px 14px",
                 borderRadius: 8,
                 background: loading || !input.trim() ? "#94a3b8" : "#0f172a",
                 color: "white",
@@ -162,10 +168,11 @@ export default function ActionVisualizer() {
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
+                fontSize: 14
               }}
             >
               {loading && <Loader2 style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }} />}
-              みえーる化する
+              みえーる化
             </button>
             <button
               onClick={() => setInput("")}
@@ -176,6 +183,7 @@ export default function ActionVisualizer() {
                 background: "transparent",
                 border: "none",
                 cursor: loading ? "not-allowed" : "pointer",
+                padding: "6px 10px"
               }}
             >
               クリア
@@ -189,9 +197,11 @@ export default function ActionVisualizer() {
                 background: "transparent",
                 border: "none",
                 cursor: "pointer",
+                padding: "6px 10px",
+                whiteSpace: "nowrap"
               }}
             >
-              過去の履歴 {historyOpen ? "非表示" : "表示"}
+              履歴 {historyOpen ? "✕" : "▼"}
             </button>
             {history.length > 0 && (
               <button
@@ -207,9 +217,10 @@ export default function ActionVisualizer() {
                   background: "transparent",
                   border: "none",
                   cursor: "pointer",
+                  padding: "6px 10px"
                 }}
               >
-                履歴をクリア
+                削除
               </button>
             )}
           </div>
