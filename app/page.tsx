@@ -124,7 +124,7 @@ export default function ActionVisualizer() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
             <h1 style={{ fontSize: "clamp(18px, 5vw, 24px)", fontWeight: 600, margin: 0 }}>タスクみえーるくん 👀</h1>
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
-              <label style={{ fontSize: 12, color: "#64748b", whiteSpace: "nowrap" }}>名前:</label>
+              <label style={{ fontSize: 12, color: "#475569", whiteSpace: "nowrap" }}>名前:</label>
               <input
                 type="text"
                 value={userName}
@@ -141,7 +141,7 @@ export default function ActionVisualizer() {
               />
             </div>
           </div>
-          <p style={{ color: "#6b7280", fontSize: 13, margin: 0 }}>
+          <p style={{ color: "#475569", fontSize: 13, margin: 0 }}>
             {loading ? "タスクを整理中です…" : "文章を貼り付けて、今やるべきことを見える化"}
           </p>
         </div>
@@ -179,7 +179,7 @@ export default function ActionVisualizer() {
               disabled={loading}
               style={{
                 fontSize: 13,
-                color: "#6b7280",
+                color: "#475569",
                 background: "transparent",
                 border: "none",
                 cursor: loading ? "not-allowed" : "pointer",
@@ -193,7 +193,7 @@ export default function ActionVisualizer() {
               style={{
                 marginLeft: "auto",
                 fontSize: 13,
-                color: "#334155",
+                color: "#1e293b",
                 background: "transparent",
                 border: "none",
                 cursor: "pointer",
@@ -233,42 +233,43 @@ export default function ActionVisualizer() {
         {isAnalyzeResult(result) && !loading && (
           <>
             {/* セクション1: 今すべきこと */}
-            <div style={{ background: "white", borderRadius: 8, padding: 20, marginTop: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-              <div style={{ fontSize: 14, marginBottom: 16, paddingBottom: 16, borderBottom: "1px solid #e5e7eb" }}>
+            <div style={{ background: "white", borderRadius: 8, padding: "16px", marginTop: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+              <div style={{ fontSize: 13, marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid #e5e7eb", wordBreak: "break-word" }}>
                 <span style={{ fontWeight: 600, color: "#0f172a" }}>要約：</span>
-                <span style={{ color: "#334155" }}>{result.summary}</span>
+                <span style={{ color: "#1e293b" }}>{result.summary}</span>
               </div>
-              <div style={{ display: "grid", gap: 20, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+              <div style={{ display: "grid", gap: 16 }}>
                 <section>
-                  <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 10, color: "#0f172a" }}>📋 依頼内容</h2>
+                  <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 10, color: "#0f172a" }}>📋 依頼内容</h2>
                   <ul style={{ paddingLeft: 20, margin: 0 }}>
                     {result.explicit_points.map((s, i) => (
-                      <li key={i} style={{ marginBottom: 8, fontSize: 14, color: "#475569" }}>
+                      <li key={i} style={{ marginBottom: 8, fontSize: 13, color: "#334155", wordBreak: "break-word" }}>
                         {String(s)}
                       </li>
                     ))}
                   </ul>
                 </section>
                 <section>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <h2 style={{ fontSize: 16, fontWeight: 600, color: "#0f172a", margin: 0 }}>🎯 対応タスク</h2>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 8, flexWrap: "wrap" }}>
+                    <h2 style={{ fontSize: 15, fontWeight: 600, color: "#0f172a", margin: 0 }}>🎯 対応タスク</h2>
                     {result.inferred_actions.filter(item => item.priority !== "high").length > 0 && (
                       <button
                         onClick={() => setShowAllTasks(!showAllTasks)}
                         style={{
-                          fontSize: 12,
-                          color: "#64748b",
+                          fontSize: 11,
+                          color: "#475569",
                           background: "transparent",
                           border: "none",
                           cursor: "pointer",
-                          padding: "4px 8px",
+                          padding: "4px 6px",
+                          whiteSpace: "nowrap"
                         }}
                       >
-                        {showAllTasks ? "中・低優先度を非表示 ▲" : `他のタスク（${result.inferred_actions.filter(item => item.priority !== "high").length}件）を表示 ▼`}
+                        {showAllTasks ? "中・低 ▲" : `他 ${result.inferred_actions.filter(item => item.priority !== "high").length}件 ▼`}
                       </button>
                     )}
                   </div>
-                  <ul style={{ paddingLeft: 20, margin: 0, listStyle: "none" }}>
+                  <ul style={{ paddingLeft: 0, margin: 0, listStyle: "none" }}>
                     {result.inferred_actions
                       .sort((a, b) => {
                         const priorityOrder = { high: 0, medium: 1, low: 2 };
@@ -285,36 +286,40 @@ export default function ActionVisualizer() {
                         const isMyTask = item.assignee === userName || item.assignee === "あなた";
                         const assigneeColor = isMyTask ? "#10b981" : "#64748b";
                         return (
-                          <li key={i} style={{ marginBottom: 10, fontSize: 14, color: "#475569", display: "flex", alignItems: "flex-start", gap: 8 }}>
+                          <li key={i} style={{ marginBottom: 10, fontSize: 13, color: "#334155", display: "flex", alignItems: "flex-start", gap: 6, flexWrap: "wrap" }}>
                             <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
                               <span style={{ 
                                 display: "inline-block",
-                                padding: "2px 8px",
+                                padding: "2px 6px",
                                 borderRadius: 4,
-                                fontSize: 11,
+                                fontSize: 10,
                                 fontWeight: 600,
                                 background: priority.bg,
                                 border: `1px solid ${priority.border}`,
                                 color: priority.text,
-                                minWidth: 32,
+                                minWidth: 24,
                                 textAlign: "center"
                               }}>
                                 {priority.label}
                               </span>
                               <span style={{ 
                                 display: "inline-block",
-                                padding: "2px 8px",
+                                padding: "2px 6px",
                                 borderRadius: 4,
-                                fontSize: 11,
+                                fontSize: 10,
                                 fontWeight: 500,
                                 background: isMyTask ? "#ecfdf5" : "#f1f5f9",
                                 border: `1px solid ${isMyTask ? "#86efac" : "#cbd5e1"}`,
-                                color: assigneeColor
+                                color: assigneeColor,
+                                maxWidth: "80px",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap"
                               }}>
                                 {item.assignee}
                               </span>
                             </div>
-                            <span style={{ flex: 1 }}>{String(item.text)}</span>
+                            <span style={{ flex: 1, minWidth: 0, wordBreak: "break-word" }}>{String(item.text)}</span>
                           </li>
                         );
                       })}
@@ -324,9 +329,9 @@ export default function ActionVisualizer() {
             </div>
 
             {/* セクション2: 詳細解説 */}
-            <div style={{ background: "white", borderRadius: 8, padding: 20, marginTop: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-              <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12, color: "#0f172a" }}>📝 詳細解説</h2>
-              <p style={{ fontSize: 14, color: "#475569", lineHeight: 1.7, margin: 0 }}>
+            <div style={{ background: "white", borderRadius: 8, padding: "16px", marginTop: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+              <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12, color: "#0f172a" }}>📝 詳細解説</h2>
+              <p style={{ fontSize: 13, color: "#334155", lineHeight: 1.7, margin: 0, wordBreak: "break-word" }}>
                 {result.detailed_analysis}
               </p>
             </div>
@@ -335,7 +340,7 @@ export default function ActionVisualizer() {
 
         {historyOpen && history.length > 0 && (
           <div style={{ marginTop: 20 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 600, color: "#334155", marginBottom: 10 }}>📜 過去のみえーる化</h3>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", marginBottom: 10 }}>📜 過去のみえーる化</h3>
             <ul style={{ display: "grid", gap: 10, listStyle: "none", padding: 0 }}>
               {history.map((h) => (
                 <li
@@ -355,8 +360,8 @@ export default function ActionVisualizer() {
                     setResult(h.result);
                   }}
                 >
-                  <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 6 }}>{new Date(h.at).toLocaleString("ja-JP")}</div>
-                  <div style={{ fontSize: 13, color: "#334155" }}>
+                  <div style={{ fontSize: 11, color: "#64748b", marginBottom: 6 }}>{new Date(h.at).toLocaleString("ja-JP")}</div>
+                  <div style={{ fontSize: 13, color: "#1e293b" }}>
                     {String(h.input).slice(0, 120)}
                     {String(h.input).length > 120 ? "…" : ""}
                   </div>
@@ -366,7 +371,7 @@ export default function ActionVisualizer() {
           </div>
         )}
 
-        <p style={{ marginTop: 20, fontSize: 11, color: "#94a3b8", textAlign: "center" }}>
+        <p style={{ marginTop: 20, fontSize: 11, color: "#64748b", textAlign: "center" }}>
           タスクみえーるくん - AIが文章からやるべきことを整理します
         </p>
       </div>
