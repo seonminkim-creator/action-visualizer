@@ -14,6 +14,7 @@ export default function CalendarFinder() {
   const [durationMin, setDurationMin] = useState<number | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true); // 認証チェック中
 
   const periods: Period[] = ["this_week", "next_week", "next_next_week", "next_month"];
   const durations = [15, 30, 45, 60];
@@ -23,8 +24,10 @@ export default function CalendarFinder() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("authenticated") === "true") {
       setIsAuthenticated(true);
+      setAuthChecking(false);
       // URLをクリーンアップ
       window.history.replaceState({}, "", "/agents/calendar-finder");
+      return;
     }
 
     // クッキーから認証状態を確認
@@ -37,6 +40,8 @@ export default function CalendarFinder() {
         }
       } catch (error) {
         console.log("認証チェックエラー:", error);
+      } finally {
+        setAuthChecking(false); // チェック完了
       }
     };
 
@@ -299,8 +304,8 @@ export default function CalendarFinder() {
           </p>
         </div>
 
-        {/* Google認証ボタン */}
-        {!isAuthenticated && (
+        {/* Google認証ボタン - 認証チェック完了後のみ表示 */}
+        {!authChecking && !isAuthenticated && (
           <div style={{
             background: "white",
             padding: 16,
