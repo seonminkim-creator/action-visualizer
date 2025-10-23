@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import BackToHome from "../../components/BackToHome";
-import { Calendar, Copy, Settings as SettingsIcon } from "lucide-react";
+import { Copy } from "lucide-react";
 import { Period, Mode, DaySlots } from "../../types/calendar";
 import { getMockAvailability, periodLabels } from "../../lib/mockData";
 
@@ -99,6 +99,10 @@ export default function CalendarFinder() {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
         }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
         .result-view {
           animation: fadeIn 0.3s ease-out;
         }
@@ -108,45 +112,33 @@ export default function CalendarFinder() {
         .period-chip:hover {
           transform: translateY(-2px);
         }
+        @media (min-width: 768px) {
+          .container { padding: 32px; }
+        }
       `}</style>
 
-      <div style={{ margin: "0 auto", maxWidth: 600 }}>
+      <div style={{ margin: "0 auto", maxWidth: 960 }}>
         <div style={{ marginBottom: 16 }}>
           <BackToHome />
         </div>
 
         {/* ヘッダー */}
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 16
-        }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
           <h1 style={{
-            fontSize: "clamp(18px, 4vw, 24px)",
+            fontSize: "clamp(14px, 4vw, 24px)",
             fontWeight: 600,
             margin: 0,
-            color: "#0f172a"
+            background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+            color: "white",
+            padding: "6px 12px",
+            borderRadius: 6,
+            display: "inline-block"
           }}>
-            空き時間みえーるくん
+            空き時間みえーるくん 📅
           </h1>
-          <button
-            style={{
-              padding: "8px 12px",
-              borderRadius: 8,
-              background: "white",
-              border: "1px solid #e5e7eb",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              fontSize: 14,
-              color: "#475569"
-            }}
-          >
-            <SettingsIcon size={16} />
-            設定
-          </button>
+          <p style={{ color: "#475569", fontSize: 13, margin: 0 }}>
+            {loading ? "空き時間を取得中です…" : "期間を選んで空き時間を可視化"}
+          </p>
         </div>
 
         {/* モード切替 */}
@@ -200,10 +192,10 @@ export default function CalendarFinder() {
         {/* 期間チップ */}
         {!selectedPeriod && !loading && (
           <div style={{
-            display: "flex",
-            gap: 8,
-            overflowX: "auto",
-            paddingBottom: 8
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+            gap: 12,
+            marginBottom: 12
           }}>
             {periods.map(period => (
               <button
@@ -211,16 +203,16 @@ export default function CalendarFinder() {
                 onClick={() => handlePeriodClick(period)}
                 className="period-chip"
                 style={{
-                  padding: "12px 20px",
+                  padding: "16px 20px",
                   borderRadius: 8,
-                  background: "white",
-                  border: "1px solid #e5e7eb",
+                  background: "#0f172a",
+                  border: "none",
                   cursor: "pointer",
-                  fontSize: 14,
-                  fontWeight: 500,
-                  color: "#0f172a",
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: "white",
                   whiteSpace: "nowrap",
-                  boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
                 }}
               >
                 {periodLabels[period]}
@@ -300,38 +292,50 @@ export default function CalendarFinder() {
                   const formattedDate = `${dateParts[1]}/${dateParts[2]}(${day.weekday})`;
 
                   return (
-                    <div key={idx} style={{ marginBottom: idx < result.length - 1 ? 16 : 0 }}>
+                    <div key={idx} style={{ marginBottom: idx < result.length - 1 ? 20 : 0 }}>
                       <div style={{
-                        fontSize: 14,
-                        fontWeight: 600,
+                        fontSize: 15,
+                        fontWeight: 700,
                         color: "#0f172a",
-                        marginBottom: 8
+                        marginBottom: 10,
+                        paddingBottom: 6,
+                        borderBottom: "2px solid #f1f5f9"
                       }}>
                         {formattedDate}
                       </div>
                       {day.slots.length === 0 ? (
                         <div style={{
-                          fontSize: 13,
-                          color: "#64748b",
-                          paddingLeft: 8
+                          fontSize: 14,
+                          color: "#94a3b8",
+                          textAlign: "center",
+                          padding: "12px 0",
+                          fontStyle: "italic"
                         }}>
-                          （空きなし）
+                          空きなし
                         </div>
                       ) : (
-                        day.slots.map((slot, sidx) => (
-                          <div
-                            key={sidx}
-                            style={{
-                              fontSize: 13,
-                              color: "#475569",
-                              paddingLeft: 8,
-                              marginBottom: 4,
-                              lineHeight: 1.6
-                            }}
-                          >
-                            ・{slot.start}〜{slot.end}
-                          </div>
-                        ))
+                        <div style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: 8
+                        }}>
+                          {day.slots.map((slot, sidx) => (
+                            <div
+                              key={sidx}
+                              style={{
+                                padding: "8px 14px",
+                                background: "#f1f5f9",
+                                borderRadius: 6,
+                                fontSize: 14,
+                                fontWeight: 500,
+                                color: "#334155",
+                                border: "1px solid #e2e8f0"
+                              }}
+                            >
+                              {slot.start}〜{slot.end}
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </div>
                   );
