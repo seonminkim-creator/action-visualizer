@@ -169,11 +169,21 @@ export async function POST(request: NextRequest) {
     const days: DaySlots[] = [];
     const currentDate = new Date(start);
 
+    // 今日の日付（JST）を取得
+    const nowJST = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const todayStr = nowJST.toISOString().split("T")[0];
+
     while (currentDate <= end) {
       // UTC日付をJSTに変換
       const dateJST = new Date(currentDate.getTime() + 9 * 60 * 60 * 1000);
       const dateStr = dateJST.toISOString().split("T")[0]; // JST基準の日付文字列
       const dayOfWeek = dateJST.getUTCDay(); // JST基準の曜日
+
+      // 今日より前の日付はスキップ
+      if (dateStr < todayStr) {
+        currentDate.setDate(currentDate.getDate() + 1);
+        continue;
+      }
 
       // 日本の祝日をチェック（JST基準の日付を使用）
       const [year, month, day] = dateStr.split("-").map(Number);
