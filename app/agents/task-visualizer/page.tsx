@@ -178,15 +178,20 @@ export default function ActionVisualizer() {
             marginBottom: 12,
             border: "1px solid #e5e7eb"
           }}>
-            <p style={{
+            <div style={{
               fontSize: 12,
               color: "#64748b",
-              margin: 0,
-              lineHeight: 1.6
+              lineHeight: 1.7
             }}>
-              💡 <span style={{ fontWeight: 600, color: "#475569" }}>こんな時に便利：</span>
-              顧客メール・上司の指示・RFP・デモ依頼・契約更新・不具合報告など
-            </p>
+              <div style={{ marginBottom: 6 }}>
+                <span style={{ fontWeight: 600, color: "#475569" }}>📧 顧客メール</span>
+                　依頼内容と期日を抜き出し、やるべきことを教えてくれる
+              </div>
+              <div>
+                <span style={{ fontWeight: 600, color: "#475569" }}>💬 上司の指示</span>
+                　長文チャットから要点と期限を整理、確認事項を可視化
+              </div>
+            </div>
           </div>
         )}
 
