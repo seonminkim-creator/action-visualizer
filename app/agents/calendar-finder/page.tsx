@@ -211,8 +211,17 @@ export default function CalendarFinder() {
         .period-chip:hover {
           transform: translateY(-2px);
         }
+        .mode-toggle {
+          display: flex;
+        }
+        .mode-toggle.has-result {
+          display: none;
+        }
         @media (min-width: 768px) {
           .container { padding: 32px; }
+          .mode-toggle.has-result {
+            display: flex;
+          }
         }
       `}</style>
 
@@ -337,53 +346,53 @@ export default function CalendarFinder() {
           </div>
         )}
 
-        {/* モード切替 */}
-        {!selectedPeriod && (
-          <div style={{
-            display: "flex",
+        {/* モード切替 - PC画面では常に表示 */}
+        <div
+          className={`mode-toggle ${selectedPeriod ? "has-result" : ""}`}
+          style={{
             gap: 8,
             marginBottom: 16,
             background: "white",
             padding: 4,
             borderRadius: 8,
             border: "1px solid #e5e7eb"
-          }}>
-            <button
-              onClick={() => setMode("visit")}
-              style={{
-                flex: 1,
-                padding: "8px 16px",
-                borderRadius: 6,
-                border: "none",
-                background: mode === "visit" ? "#0f172a" : "transparent",
-                color: mode === "visit" ? "white" : "#64748b",
-                cursor: "pointer",
-                fontSize: 14,
-                fontWeight: 500,
-                transition: "all 0.2s"
-              }}
-            >
-              訪問用
-            </button>
-            <button
-              onClick={() => setMode("mail")}
-              style={{
-                flex: 1,
-                padding: "8px 16px",
-                borderRadius: 6,
-                border: "none",
-                background: mode === "mail" ? "#0f172a" : "transparent",
-                color: mode === "mail" ? "white" : "#64748b",
-                cursor: "pointer",
-                fontSize: 14,
-                fontWeight: 500,
-                transition: "all 0.2s"
-              }}
-            >
-              メール候補
-            </button>
-          </div>
-        )}
+          }}
+        >
+          <button
+            onClick={() => setMode("visit")}
+            style={{
+              flex: 1,
+              padding: "8px 16px",
+              borderRadius: 6,
+              border: "none",
+              background: mode === "visit" ? "#0f172a" : "transparent",
+              color: mode === "visit" ? "white" : "#64748b",
+              cursor: "pointer",
+              fontSize: 14,
+              fontWeight: 500,
+              transition: "all 0.2s"
+            }}
+          >
+            訪問用
+          </button>
+          <button
+            onClick={() => setMode("mail")}
+            style={{
+              flex: 1,
+              padding: "8px 16px",
+              borderRadius: 6,
+              border: "none",
+              background: mode === "mail" ? "#0f172a" : "transparent",
+              color: mode === "mail" ? "white" : "#64748b",
+              cursor: "pointer",
+              fontSize: 14,
+              fontWeight: 500,
+              transition: "all 0.2s"
+            }}
+          >
+            メール候補
+          </button>
+        </div>
 
         {/* 期間選択 */}
         <div style={{ marginBottom: 16 }}>
@@ -491,7 +500,8 @@ export default function CalendarFinder() {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              marginBottom: 16
+              marginBottom: 16,
+              gap: 12
             }}>
               <h2 style={{
                 fontSize: 18,
@@ -501,26 +511,44 @@ export default function CalendarFinder() {
               }}>
                 {periodLabels[selectedPeriod]}
               </h2>
-              <button
-                onClick={handleCopy}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: 8,
-                  background: copied ? "#10b981" : "#0f172a",
-                  color: "white",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  transition: "all 0.2s"
-                }}
-              >
-                <Copy size={14} />
-                {copied ? "コピー完了!" : "コピー"}
-              </button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={handleBack}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 8,
+                    background: "#0f172a",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: "white",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  リセット
+                </button>
+                <button
+                  onClick={handleCopy}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 8,
+                    background: copied ? "#10b981" : "#0f172a",
+                    color: "white",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    transition: "all 0.2s"
+                  }}
+                >
+                  <Copy size={14} />
+                  {copied ? "コピー完了!" : "コピー"}
+                </button>
+              </div>
             </div>
 
             {/* 訪問用表示 */}
@@ -631,26 +659,6 @@ export default function CalendarFinder() {
                 </div>
               </div>
             )}
-
-            {/* リセットボタン */}
-            <button
-              onClick={handleBack}
-              style={{
-                marginTop: 16,
-                padding: "8px 16px",
-                borderRadius: 8,
-                background: "#0f172a",
-                border: "none",
-                cursor: "pointer",
-                fontSize: 13,
-                fontWeight: 500,
-                color: "white",
-                width: "100%",
-                transition: "all 0.2s"
-              }}
-            >
-              リセット
-            </button>
           </div>
         )}
       </div>
