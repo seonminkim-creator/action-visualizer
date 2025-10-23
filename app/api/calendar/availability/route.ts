@@ -118,7 +118,9 @@ function convertBusyToFree(busySlots: { start: string; end: string }[], date: Da
 // 曜日を取得
 function getWeekday(date: Date): string {
   const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
-  return weekdays[date.getDay()];
+  // JST基準で曜日を取得（UTC+9時間）
+  const dateJST = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+  return weekdays[dateJST.getUTCDay()];
 }
 
 export async function POST(request: NextRequest) {

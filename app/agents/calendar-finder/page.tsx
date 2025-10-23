@@ -298,13 +298,21 @@ export default function CalendarFinder() {
               </span>
             </div>
             <button
-              onClick={() => {
-                document.cookie = "google_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-                document.cookie = "google_refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-                setIsAuthenticated(false);
-                setResult(null);
-                setSelectedPeriod(null);
-                window.location.reload();
+              onClick={async () => {
+                if (window.confirm("Googleカレンダーとの連携を解除しますか？\n再度連携が必要になります。")) {
+                  try {
+                    // APIルートを作って確実にクッキーを削除
+                    await fetch("/api/auth/logout", { method: "POST" });
+                    setIsAuthenticated(false);
+                    setResult(null);
+                    setSelectedPeriod(null);
+                    setDurationMin(null);
+                    window.location.reload();
+                  } catch (error) {
+                    console.error("連携解除エラー:", error);
+                    alert("連携解除に失敗しました");
+                  }
+                }
               }}
               style={{
                 padding: "6px 12px",
@@ -314,7 +322,14 @@ export default function CalendarFinder() {
                 color: "#166534",
                 cursor: "pointer",
                 fontSize: 13,
-                fontWeight: 500
+                fontWeight: 500,
+                transition: "all 0.2s"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#86efac";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
               }}
             >
               連携解除
