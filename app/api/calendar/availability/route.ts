@@ -157,15 +157,15 @@ export async function POST(request: NextRequest) {
     const currentDate = new Date(start);
 
     while (currentDate <= end) {
-      const dateStr = currentDate.toISOString().split("T")[0];
-
-      // 日本時間での曜日を取得（UTC+9時間）
+      // UTC日付をJSTに変換
       const dateJST = new Date(currentDate.getTime() + 9 * 60 * 60 * 1000);
-      const dayOfWeek = dateJST.getUTCDay();
+      const dateStr = dateJST.toISOString().split("T")[0]; // JST基準の日付文字列
+      const dayOfWeek = dateJST.getUTCDay(); // JST基準の曜日
 
-      // 日本の祝日をチェック
+      // 日本の祝日をチェック（JST基準の日付を使用）
       const [year, month, day] = dateStr.split("-").map(Number);
-      const isHoliday = JapaneseHolidays.isHoliday(new Date(year, month - 1, day));
+      const checkDate = new Date(year, month - 1, day);
+      const isHoliday = JapaneseHolidays.isHoliday(checkDate);
 
       console.log(`${dateStr}: dayOfWeek=${dayOfWeek}, isHoliday=${isHoliday}, skip=${dayOfWeek === 0 || dayOfWeek === 6 || isHoliday}`);
 
