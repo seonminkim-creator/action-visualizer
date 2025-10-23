@@ -1,432 +1,235 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import Link from "next/link";
+import { CheckSquare, Calendar, Mail, MessageSquare } from "lucide-react";
 
-type AnalyzeResult = {
-  summary: string;
-  explicit_points: string[];
-  inferred_actions: Array<{ text: string; priority: "high" | "medium" | "low"; assignee: string }>;
-  detailed_analysis: string;
+type Agent = {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  path: string;
+  gradient: string;
+  status: "active" | "coming-soon";
 };
 
-function isAnalyzeResult(x: unknown): x is AnalyzeResult {
-  const o = x as any;
-  if (!o || typeof o !== "object" || typeof o.summary !== "string") return false;
-  if (!Array.isArray(o.explicit_points)) return false;
-  if (!Array.isArray(o.inferred_actions)) return false;
-  if (typeof o.detailed_analysis !== "string") return false;
-  
-  return o.inferred_actions.every((item: any) => 
-    item && 
-    typeof item === "object" && 
-    typeof item.text === "string" &&
-    typeof item.assignee === "string" &&
-    ["high", "medium", "low"].includes(item.priority)
-  );
-}
-
-async function callAnalyzeAPI(text: string, userName: string): Promise<AnalyzeResult | null> {
-  try {
-    const res = await fetch("/api/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, userName }),
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as unknown;
-    return isAnalyzeResult(data) ? data : null;
-  } catch {
-    return null;
+const agents: Agent[] = [
+  {
+    id: "task-visualizer",
+    title: "タスクみえーるくん",
+    description: "メール・議事録からやるべきことを可視化",
+    icon: <CheckSquare size={32} />,
+    path: "/agents/task-visualizer",
+    gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    status: "active"
+  },
+  {
+    id: "calendar-finder",
+    title: "空き時間みえーるくん",
+    description: "カレンダーから空き時間をすぐ可視化",
+    icon: <Calendar size={32} />,
+    path: "/agents/calendar-finder",
+    gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+    status: "coming-soon"
+  },
+  {
+    id: "email-drafter",
+    title: "メール叩きくん",
+    description: "メールのテンプレート・ドラフトを自動作成",
+    icon: <Mail size={32} />,
+    path: "/agents/email-drafter",
+    gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+    status: "coming-soon"
+  },
+  {
+    id: "meeting-recorder",
+    title: "会議まとめーるくん",
+    description: "社内会議をセールス視点で要約・TODO抽出",
+    icon: <MessageSquare size={32} />,
+    path: "/agents/meeting-recorder",
+    gradient: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+    status: "coming-soon"
   }
-}
+];
 
-function mockAnalyze(text: string, userName: string): AnalyzeResult {
-  return {
-    summary: "要件確認と最小人数の氏名回収が必要",
-    explicit_points: ["フルネーム提出の依頼", "人数は必要最小限"],
-    inferred_actions: [
-      { text: "対象者の選定", priority: "high", assignee: userName || "その他" },
-      { text: "氏名（漢字/ローマ字）回収", priority: "high", assignee: userName || "その他" },
-      { text: "提出先と期限の確認と返信", priority: "medium", assignee: userName || "その他" }
-    ],
-    detailed_analysis: "BASFドメインでのアカウント作成に必要な情報収集の依頼です。取得対象者のフルネームを必要最小限の人数分提出する必要があります。"
-  };
-}
-
-export default function ActionVisualizer() {
-  const [input, setInput] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<AnalyzeResult | null>(null);
-  const [historyOpen, setHistoryOpen] = useState<boolean>(true);
-  const [showAllTasks, setShowAllTasks] = useState<boolean>(false);
-  const [userName, setUserName] = useState<string>("");
-  const [history, setHistory] = useState<Array<{ id: string; at: number; input: string; result: AnalyzeResult }>>([]);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("actionviz_history_v1");
-      if (raw) setHistory(JSON.parse(raw));
-      
-      const savedUserName = localStorage.getItem("actionviz_username");
-      if (savedUserName) setUserName(savedUserName);
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("actionviz_history_v1", JSON.stringify(history.slice(0, 50)));
-    } catch {}
-  }, [history]);
-
-  useEffect(() => {
-    try {
-      if (userName) {
-        localStorage.setItem("actionviz_username", userName);
-      }
-    } catch {}
-  }, [userName]);
-
-  async function analyze(): Promise<void> {
-    const text = input.trim();
-    if (!text) return;
-    setLoading(true);
-    setError(null);
-    setResult(null);
-    setShowAllTasks(false);
-    const api = await callAnalyzeAPI(text, userName);
-    if (api) {
-      setResult(api);
-      setHistory((h) => [{ id: crypto.randomUUID(), at: Date.now(), input: text, result: api }, ...h].slice(0, 50));
-    } else {
-      const mock = mockAnalyze(text, userName);
-      setResult(mock);
-      setError("APIエラー。プレビュー用の暫定結果を表示しています。");
-      setHistory((h) => [{ id: crypto.randomUUID(), at: Date.now(), input: text, result: mock }, ...h].slice(0, 50));
-    }
-    setLoading(false);
-  }
-
-  function deleteHistoryItem(id: string) {
-    setHistory((h) => h.filter(item => item.id !== id));
-  }
-
+export default function Home() {
   return (
     <div style={{ minHeight: "100vh", padding: "16px", background: "#f8fafc" }}>
       <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        @media (min-width: 768px) {
-          .container { padding: 32px; }
+        .agent-card {
+          animation: fadeIn 0.5s ease-out;
         }
-        input::placeholder, textarea::placeholder {
-          color: #94a3b8;
-          opacity: 1;
+        @media (min-width: 640px) {
+          .agents-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
         }
       `}</style>
-      <div style={{ margin: "0 auto", maxWidth: 960 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-            <h1 style={{ 
-              fontSize: "clamp(14px, 4vw, 24px)", 
-              fontWeight: 600, 
-              margin: 0,
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              color: "white",
-              padding: "6px 12px",
-              borderRadius: 6,
-              display: "inline-block"
-            }}>
-              タスクみえーるくん 👀
-            </h1>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
-              <label style={{ fontSize: 12, color: "#475569", whiteSpace: "nowrap" }}>名前:</label>
-              <input
-                type="text"
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-                placeholder="例: 田中"
-                style={{ 
-                  padding: "6px 10px", 
-                  borderRadius: 6, 
-                  border: "1px solid #d1d5db", 
-                  fontSize: 12,
-                  width: "100px",
-                  maxWidth: "120px",
-                  background: "white"
-                }}
-              />
-            </div>
-          </div>
-          <p style={{ color: "#475569", fontSize: 13, margin: 0 }}>
-            {loading ? "タスクを整理中です…" : "文章を貼り付けて、今やるべきことを見える化"}
+
+      <div style={{ margin: "0 auto", maxWidth: 1200, paddingTop: "40px" }}>
+        {/* ヘッダー */}
+        <div style={{ textAlign: "center", marginBottom: 48 }}>
+          <h1 style={{
+            fontSize: "clamp(24px, 5vw, 40px)",
+            fontWeight: 700,
+            margin: 0,
+            marginBottom: 12,
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text"
+          }}>
+            AIエージェント・ディクショナリー
+          </h1>
+          <p style={{
+            fontSize: "clamp(14px, 3vw, 18px)",
+            color: "#64748b",
+            margin: 0,
+            fontWeight: 500
+          }}>
+            あなたの仕事を効率化する専門AIアシスタント
           </p>
         </div>
 
-        <div style={{ display: "grid", gap: 12 }}>
-          <textarea
-            placeholder="ここに文章を貼り付け（メール、議事録など）"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            style={{ 
-              minHeight: 150, 
-              padding: 12, 
-              borderRadius: 8, 
-              border: "1px solid #d1d5db", 
-              fontSize: 14, 
-              width: "100%", 
-              boxSizing: "border-box",
-              background: "white",
-              color: "#1e293b"
-            }}
-          />
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <button
-              onClick={analyze}
-              disabled={loading || !input.trim()}
-              style={{
-                padding: "10px 14px",
-                borderRadius: 8,
-                background: loading || !input.trim() ? "#94a3b8" : "#0f172a",
-                color: "white",
-                border: "none",
-                cursor: loading || !input.trim() ? "not-allowed" : "pointer",
-                fontWeight: 500,
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                fontSize: 14
-              }}
-            >
-              {loading && <Loader2 style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }} />}
-              みえーる化
-            </button>
-            <button
-              onClick={() => setInput("")}
-              disabled={loading}
-              style={{
-                fontSize: 13,
-                color: "#475569",
-                background: "transparent",
-                border: "none",
-                cursor: loading ? "not-allowed" : "pointer",
-                padding: "6px 10px"
-              }}
-            >
-              クリア
-            </button>
-            <button
-              onClick={() => setHistoryOpen((v) => !v)}
-              style={{
-                marginLeft: "auto",
-                fontSize: 13,
-                color: "#1e293b",
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                padding: "6px 10px",
-                whiteSpace: "nowrap"
-              }}
-            >
-              履歴 {historyOpen ? "✕" : "▼"}
-            </button>
-            {history.length > 0 && (
-              <button
-                onClick={() => {
-                  if (confirm("過去の履歴を全て削除しますか？")) {
-                    setHistory([]);
-                    localStorage.removeItem("actionviz_history_v1");
-                  }
-                }}
-                style={{
-                  fontSize: 13,
-                  color: "#dc2626",
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: "6px 10px"
-                }}
-              >
-                削除
-              </button>
-            )}
-          </div>
-        </div>
+        {/* エージェントカードグリッド */}
+        <div
+          className="agents-grid"
+          style={{
+            display: "grid",
+            gap: 20,
+            gridTemplateColumns: "1fr"
+          }}
+        >
+          {agents.map((agent, index) => {
+            const isActive = agent.status === "active";
 
-        {typeof error === "string" && error && (
-          <div style={{ color: "#dc2626", fontSize: 14, marginTop: 12, padding: 12, background: "#fee", borderRadius: 8 }}>{error}</div>
-        )}
-
-        {isAnalyzeResult(result) && !loading && (
-          <>
-            <div style={{ background: "white", borderRadius: 8, padding: "16px", marginTop: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-              <div style={{ fontSize: 13, marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid #e5e7eb", wordBreak: "break-word" }}>
-                <span style={{ fontWeight: 600, color: "#0f172a" }}>要約：</span>
-                <span style={{ color: "#1e293b" }}>{result.summary}</span>
-              </div>
-              <div style={{ display: "grid", gap: 16 }}>
-                <section>
-                  <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 10, color: "#0f172a" }}>📋 依頼内容</h2>
-                  <ul style={{ paddingLeft: 20, margin: 0 }}>
-                    {result.explicit_points.map((s, i) => (
-                      <li key={i} style={{ marginBottom: 8, fontSize: 13, color: "#334155", wordBreak: "break-word" }}>
-                        {String(s)}
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-                <section>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 8, flexWrap: "wrap" }}>
-                    <h2 style={{ fontSize: 15, fontWeight: 600, color: "#0f172a", margin: 0 }}>🎯 対応タスク</h2>
-                    {result.inferred_actions.filter(item => item.priority !== "high").length > 0 && (
-                      <button
-                        onClick={() => setShowAllTasks(!showAllTasks)}
-                        style={{
-                          fontSize: 11,
-                          color: "#475569",
-                          background: "transparent",
-                          border: "none",
-                          cursor: "pointer",
-                          padding: "4px 6px",
-                          whiteSpace: "nowrap"
-                        }}
-                      >
-                        {showAllTasks ? "中・低 ▲" : `他 ${result.inferred_actions.filter(item => item.priority !== "high").length}件 ▼`}
-                      </button>
-                    )}
+            const cardContent = (
+              <>
+                {/* アイコンとステータスバッジ */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+                  <div
+                    style={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: 12,
+                      background: agent.gradient,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "white"
+                    }}
+                  >
+                    {agent.icon}
                   </div>
-                  <ul style={{ paddingLeft: 0, margin: 0, listStyle: "none" }}>
-                    {result.inferred_actions
-                      .sort((a, b) => {
-                        const priorityOrder = { high: 0, medium: 1, low: 2 };
-                        return priorityOrder[a.priority] - priorityOrder[b.priority];
-                      })
-                      .filter(item => showAllTasks || item.priority === "high")
-                      .map((item, i) => {
-                        const priorityColors = {
-                          high: { bg: "#fef2f2", border: "#fca5a5", text: "#dc2626", label: "高" },
-                          medium: { bg: "#fef3c7", border: "#fcd34d", text: "#d97706", label: "中" },
-                          low: { bg: "#f0f9ff", border: "#93c5fd", text: "#2563eb", label: "低" }
-                        };
-                        const priority = priorityColors[item.priority];
-                        const isMyTask = item.assignee === userName || item.assignee === "あなた";
-                        const assigneeColor = isMyTask ? "#10b981" : "#64748b";
-                        return (
-                          <li key={i} style={{ marginBottom: 10, fontSize: 13, color: "#334155", display: "flex", alignItems: "flex-start", gap: 6, flexWrap: "wrap" }}>
-                            <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                              <span style={{ 
-                                display: "inline-block",
-                                padding: "2px 6px",
-                                borderRadius: 4,
-                                fontSize: 10,
-                                fontWeight: 600,
-                                background: priority.bg,
-                                border: `1px solid ${priority.border}`,
-                                color: priority.text,
-                                minWidth: 24,
-                                textAlign: "center"
-                              }}>
-                                {priority.label}
-                              </span>
-                              <span style={{ 
-                                display: "inline-block",
-                                padding: "2px 6px",
-                                borderRadius: 4,
-                                fontSize: 10,
-                                fontWeight: 500,
-                                background: isMyTask ? "#ecfdf5" : "#f1f5f9",
-                                border: `1px solid ${isMyTask ? "#86efac" : "#cbd5e1"}`,
-                                color: assigneeColor,
-                                maxWidth: "80px",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap"
-                              }}>
-                                {item.assignee}
-                              </span>
-                            </div>
-                            <span style={{ flex: 1, minWidth: 0, wordBreak: "break-word" }}>{String(item.text)}</span>
-                          </li>
-                        );
-                      })}
-                  </ul>
-                </section>
-              </div>
-            </div>
+                  {!isActive && (
+                    <span style={{
+                      padding: "4px 12px",
+                      borderRadius: 20,
+                      background: "#fef3c7",
+                      color: "#d97706",
+                      fontSize: 12,
+                      fontWeight: 600
+                    }}>
+                      Coming Soon
+                    </span>
+                  )}
+                </div>
 
-            <div style={{ background: "white", borderRadius: 8, padding: "16px", marginTop: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-              <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12, color: "#0f172a" }}>📝 詳細解説</h2>
-              <p style={{ fontSize: 13, color: "#334155", lineHeight: 1.7, margin: 0, wordBreak: "break-word" }}>
-                {result.detailed_analysis}
-              </p>
-            </div>
-          </>
-        )}
+                {/* タイトルと説明 */}
+                <h2 style={{
+                  fontSize: 20,
+                  fontWeight: 600,
+                  color: "#0f172a",
+                  marginBottom: 8,
+                  margin: 0
+                }}>
+                  {agent.title}
+                </h2>
+                <p style={{
+                  fontSize: 14,
+                  color: "#64748b",
+                  lineHeight: 1.6,
+                  margin: 0
+                }}>
+                  {agent.description}
+                </p>
 
-        {historyOpen && history.length > 0 && (
-          <div style={{ marginTop: 20 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", marginBottom: 10 }}>📜 過去のみえーる化</h3>
-            <ul style={{ display: "grid", gap: 10, listStyle: "none", padding: 0 }}>
-              {history.map((h) => (
-                <li
-                  key={h.id}
-                  style={{
-                    background: "white",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: 8,
-                    padding: 12,
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                    position: "relative"
+                {/* 矢印アイコン (activeの場合のみ) */}
+                {isActive && (
+                  <div style={{
+                    position: "absolute",
+                    bottom: 20,
+                    right: 20,
+                    fontSize: 24,
+                    color: "#cbd5e1"
+                  }}>
+                    →
+                  </div>
+                )}
+              </>
+            );
+
+            const cardStyle = {
+              position: "relative" as const,
+              background: "white",
+              borderRadius: 16,
+              padding: 24,
+              boxShadow: "0 4px 6px rgba(0,0,0,0.07)",
+              border: "1px solid #e5e7eb",
+              textDecoration: "none",
+              cursor: isActive ? ("pointer" as const) : ("not-allowed" as const),
+              opacity: isActive ? 1 : 0.6,
+              transition: "all 0.3s ease",
+              animationDelay: `${index * 0.1}s`,
+              overflow: "hidden" as const
+            };
+
+            if (isActive) {
+              return (
+                <Link
+                  key={agent.id}
+                  href={agent.path}
+                  className="agent-card"
+                  style={cardStyle}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-4px)";
+                    e.currentTarget.style.boxShadow = "0 12px 24px rgba(0,0,0,0.15)";
+                    e.currentTarget.style.borderColor = "#cbd5e1";
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
-                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#e5e7eb")}
-                  onClick={() => {
-                    setInput(String(h.input));
-                    setResult(h.result);
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "0 4px 6px rgba(0,0,0,0.07)";
+                    e.currentTarget.style.borderColor = "#e5e7eb";
                   }}
                 >
-                  <div style={{ fontSize: 11, color: "#64748b", marginBottom: 6, paddingRight: 30 }}>
-                    {new Date(h.at).toLocaleString("ja-JP")}
-                  </div>
-                  <div style={{ fontSize: 13, color: "#1e293b", paddingRight: 30 }}>
-                    {String(h.input).slice(0, 120)}
-                    {String(h.input).length > 120 ? "…" : ""}
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (confirm("この履歴を削除しますか？")) {
-                        deleteHistoryItem(h.id);
-                      }
-                    }}
-                    style={{
-                      position: "absolute",
-                      right: 8,
-                      top: 8,
-                      background: "transparent",
-                      border: "none",
-                      color: "#dc2626",
-                      cursor: "pointer",
-                      fontSize: 18,
-                      padding: 4,
-                      lineHeight: 1
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.color = "#b91c1c"}
-                    onMouseLeave={(e) => e.currentTarget.style.color = "#dc2626"}
-                  >
-                    ✕
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+                  {cardContent}
+                </Link>
+              );
+            }
 
-        <p style={{ marginTop: 20, fontSize: 11, color: "#64748b", textAlign: "center" }}>
-          タスクみえーるくん - AIが文章からやるべきことを整理します
+            return (
+              <div
+                key={agent.id}
+                className="agent-card"
+                style={cardStyle}
+              >
+                {cardContent}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* フッター */}
+        <p style={{
+          marginTop: 48,
+          fontSize: 12,
+          color: "#94a3b8",
+          textAlign: "center"
+        }}>
+          AIエージェント・ディクショナリー - あなたの仕事をサポートする専門AIツール集
         </p>
       </div>
     </div>
