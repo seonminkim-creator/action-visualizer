@@ -15,12 +15,31 @@ export default function CalendarFinder() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [authChecking, setAuthChecking] = useState(true); // 認証チェック中
+  const [showSettings, setShowSettings] = useState(false); // 設定モーダル
+  const [mailSubject, setMailSubject] = useState("打合せ候補日のご提案（{期間}）");
+  const [mailBody, setMailBody] = useState(`＜候補日＞
+{候補日}
+
+※上記日程が難しい場合は、ご都合のよろしい候補をお知らせいただけますと幸いです。
+
+＜方法＞
+対面 or オンライン`);
+  const [ignoreKeywords, setIgnoreKeywords] = useState("空き,調整可能");
 
   const periods: Period[] = ["this_week", "next_week", "next_next_week", "next_month"];
   const durations = [15, 30, 45, 60];
 
-  // 認証状態をチェック
+  // 認証状態をチェック & 設定を読み込み
   useEffect(() => {
+    // ローカルストレージから設定を読み込み
+    const savedSubject = localStorage.getItem("mailSubject");
+    const savedBody = localStorage.getItem("mailBody");
+    const savedKeywords = localStorage.getItem("ignoreKeywords");
+
+    if (savedSubject) setMailSubject(savedSubject);
+    if (savedBody) setMailBody(savedBody);
+    if (savedKeywords) setIgnoreKeywords(savedKeywords);
+
     const params = new URLSearchParams(window.location.search);
     if (params.get("authenticated") === "true") {
       setIsAuthenticated(true);
@@ -76,6 +95,7 @@ export default function CalendarFinder() {
         body: JSON.stringify({
           period,
           durationMin,
+          ignoreKeywords: ignoreKeywords.split(",").map(k => k.trim()).filter(k => k),
         }),
       });
 
@@ -154,29 +174,26 @@ export default function CalendarFinder() {
   const formatMailText = (): { subject: string; body: string } => {
     if (!result || !selectedPeriod) return { subject: "", body: "" };
 
-    const subject = `打合せ候補日のご提案（${periodLabels[selectedPeriod]}）`;
-
-    const bodyLines: string[] = ["＜候補日＞"];
     const filteredResult = getFilteredResult();
     if (!filteredResult) return { subject: "", body: "" };
 
+    // 候補日を生成
+    const candidateLines: string[] = [];
     filteredResult.forEach(day => {
       if (day.slots.length > 0) {
         const dateParts = day.date.split("-");
         const year = dateParts[0].slice(2); // "25"
         const formattedDate = `${year}/${dateParts[1]}/${dateParts[2]}（${day.weekday}）`;
         const timeSlots = day.slots.map(s => `${s.start}〜${s.end}`).join("／");
-        bodyLines.push(`・${formattedDate} ${timeSlots}`);
+        candidateLines.push(`・${formattedDate} ${timeSlots}`);
       }
     });
 
-    bodyLines.push("");
-    bodyLines.push("※上記日程が難しい場合は、ご都合のよろしい候補をお知らせいただけますと幸いです。");
-    bodyLines.push("");
-    bodyLines.push("＜方法＞");
-    bodyLines.push("対面 or オンライン");
+    // テンプレートを置換
+    const subject = mailSubject.replace("{期間}", periodLabels[selectedPeriod]);
+    const body = mailBody.replace("{候補日}", candidateLines.join("\n"));
 
-    return { subject, body: bodyLines.join("\n") };
+    return { subject, body };
   };
 
   const handleCopy = async () => {
@@ -194,6 +211,14 @@ export default function CalendarFinder() {
   const handleBack = () => {
     setSelectedPeriod(null);
     setResult(null);
+  };
+
+  const handleSaveSettings = () => {
+    localStorage.setItem("mailSubject", mailSubject);
+    localStorage.setItem("mailBody", mailBody);
+    localStorage.setItem("ignoreKeywords", ignoreKeywords);
+    setShowSettings(false);
+    alert("設定を保存しました");
   };
 
   return (
@@ -239,19 +264,45 @@ export default function CalendarFinder() {
             flexWrap: "wrap",
             gap: 8
           }}>
-            <h1 style={{
-              fontSize: "clamp(14px, 4vw, 24px)",
-              fontWeight: 600,
-              margin: 0,
-              background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-              color: "white",
-              padding: "6px 12px",
-              borderRadius: 6,
-              display: "inline-block",
-              width: "fit-content"
-            }}>
-              空き時間みえーるくん 📅
-            </h1>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <h1 style={{
+                fontSize: "clamp(14px, 4vw, 24px)",
+                fontWeight: 600,
+                margin: 0,
+                background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                color: "white",
+                padding: "6px 12px",
+                borderRadius: 6,
+                display: "inline-block",
+                width: "fit-content"
+              }}>
+                空き時間みえーるくん 📅
+              </h1>
+              <button
+                onClick={() => setShowSettings(true)}
+                style={{
+                  padding: "6px 8px",
+                  borderRadius: 6,
+                  background: "transparent",
+                  border: "1px solid #e5e7eb",
+                  color: "#64748b",
+                  cursor: "pointer",
+                  fontSize: 16,
+                  display: "flex",
+                  alignItems: "center",
+                  transition: "all 0.2s"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#f1f5f9";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "transparent";
+                }}
+                title="設定"
+              >
+                ⚙️
+              </button>
+            </div>
             {isAuthenticated && (
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div style={{
@@ -650,6 +701,141 @@ export default function CalendarFinder() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* 設定モーダル */}
+        {showSettings && (
+          <div style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: 16
+          }}
+          onClick={() => setShowSettings(false)}
+          >
+            <div style={{
+              background: "white",
+              borderRadius: 12,
+              padding: 24,
+              maxWidth: 600,
+              width: "100%",
+              maxHeight: "90vh",
+              overflow: "auto"
+            }}
+            onClick={(e) => e.stopPropagation()}
+            >
+              <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16 }}>
+                メール設定
+              </h2>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
+                  件名テンプレート
+                </label>
+                <input
+                  type="text"
+                  value={mailSubject}
+                  onChange={(e) => setMailSubject(e.target.value)}
+                  placeholder="打合せ候補日のご提案（{期間}）"
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: 6,
+                    border: "1px solid #e5e7eb",
+                    fontSize: 14
+                  }}
+                />
+                <p style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                  {"{期間}"} と入力すると期間名に置換されます
+                </p>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
+                  本文テンプレート
+                </label>
+                <textarea
+                  value={mailBody}
+                  onChange={(e) => setMailBody(e.target.value)}
+                  placeholder="＜候補日＞\n{候補日}\n\n※上記日程が難しい場合は..."
+                  rows={10}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: 6,
+                    border: "1px solid #e5e7eb",
+                    fontSize: 14,
+                    fontFamily: "inherit",
+                    resize: "vertical"
+                  }}
+                />
+                <p style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                  {"{候補日}"} と入力すると候補日リストに置換されます
+                </p>
+              </div>
+
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
+                  無視するキーワード（カンマ区切り）
+                </label>
+                <input
+                  type="text"
+                  value={ignoreKeywords}
+                  onChange={(e) => setIgnoreKeywords(e.target.value)}
+                  placeholder="空き,調整可能,仮"
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: 6,
+                    border: "1px solid #e5e7eb",
+                    fontSize: 14
+                  }}
+                />
+                <p style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                  これらのキーワードを含む予定は空き時間として扱われます
+                </p>
+              </div>
+
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button
+                  onClick={() => setShowSettings(false)}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 6,
+                    background: "transparent",
+                    border: "1px solid #e5e7eb",
+                    cursor: "pointer",
+                    fontSize: 14,
+                    fontWeight: 500
+                  }}
+                >
+                  キャンセル
+                </button>
+                <button
+                  onClick={handleSaveSettings}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 6,
+                    background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                    color: "white",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: 14,
+                    fontWeight: 500
+                  }}
+                >
+                  保存
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

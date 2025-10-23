@@ -125,7 +125,7 @@ function getWeekday(date: Date): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const { period, durationMin = 60 } = await request.json();
+    const { period, durationMin = 60, ignoreKeywords = [] } = await request.json();
 
     // クッキーからトークンを取得
     const accessToken = request.cookies.get("google_access_token")?.value;
@@ -141,16 +141,29 @@ export async function POST(request: NextRequest) {
     // 日付範囲を取得
     const { start, end } = getDateRange(period);
 
-    // freeBusy APIを呼び出し
-    const response = await calendar.freebusy.query({
-      requestBody: {
-        timeMin: start.toISOString(),
-        timeMax: end.toISOString(),
-        items: [{ id: "primary" }],
-      },
+    // イベント一覧を取得（タイトルを見るため）
+    const eventsResponse = await calendar.events.list({
+      calendarId: "primary",
+      timeMin: start.toISOString(),
+      timeMax: end.toISOString(),
+      singleEvents: true,
+      orderBy: "startTime",
     });
 
-    const busySlots = response.data.calendars?.primary?.busy || [];
+    const events = eventsResponse.data.items || [];
+
+    // 無視するキーワードを含まないイベントのみを抽出
+    const busySlots = events
+      .filter(event => {
+        const summary = event.summary || "";
+        // ignoreKeywordsのいずれかを含む場合はスキップ
+        return !ignoreKeywords.some((keyword: string) => summary.includes(keyword));
+      })
+      .map(event => ({
+        start: event.start?.dateTime || event.start?.date || "",
+        end: event.end?.dateTime || event.end?.date || "",
+      }))
+      .filter(slot => slot.start && slot.end);
 
     // 日ごとにFree時間を計算
     const days: DaySlots[] = [];
@@ -174,7 +187,7 @@ export async function POST(request: NextRequest) {
 
         // その日のBusy時間を抽出（日本時間ベースで日付比較）
         const dayBusy = busySlots.filter(busy => {
-          const busyStart = new Date(busy.start!);
+          const busyStart = new Date(busy.start);
           const busyStartJST = new Date(busyStart.getTime() + 9 * 60 * 60 * 1000);
           const busyDateStr = busyStartJST.toISOString().split("T")[0];
           return busyDateStr === dateStr;
@@ -182,7 +195,7 @@ export async function POST(request: NextRequest) {
 
         // Free時間を計算
         const freeSlots = convertBusyToFree(
-          dayBusy.map(b => ({ start: b.start!, end: b.end! })),
+          dayBusy.map(b => ({ start: b.start, end: b.end })),
           currentDate,
           durationMin
         );
