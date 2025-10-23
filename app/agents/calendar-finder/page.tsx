@@ -593,7 +593,7 @@ export default function CalendarFinder() {
                     style={{
                       padding: "8px 16px",
                       borderRadius: 8,
-                      background: "#0f172a",
+                      background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
                       border: "none",
                       cursor: "pointer",
                       fontSize: 13,
@@ -669,7 +669,17 @@ export default function CalendarFinder() {
                       }}>
                         {formattedDate} {day.isHoliday && "祝日"}
                       </div>
-                      {day.slots.length === 0 ? (
+                      {day.isHoliday ? (
+                        <div style={{
+                          fontSize: 14,
+                          color: "#ef4444",
+                          textAlign: "center",
+                          padding: "12px 0",
+                          fontStyle: "italic"
+                        }}>
+                          祝日
+                        </div>
+                      ) : day.slots.length === 0 ? (
                         <div style={{
                           fontSize: 14,
                           color: "#94a3b8",
@@ -681,22 +691,22 @@ export default function CalendarFinder() {
                         </div>
                       ) : (
                         <div style={{
-                          display: "grid",
-                          gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+                          display: "flex",
+                          flexWrap: "wrap",
                           gap: 8
                         }}>
                           {day.slots.map((slot, sidx) => (
                             <div
                               key={sidx}
                               style={{
-                                padding: "10px 12px",
+                                padding: "10px 14px",
                                 background: "#f1f5f9",
                                 borderRadius: 6,
-                                fontSize: "clamp(14px, 3.5vw, 16px)",
+                                fontSize: 14,
                                 fontWeight: 500,
                                 color: "#334155",
                                 border: "1px solid #e2e8f0",
-                                textAlign: "center"
+                                whiteSpace: "nowrap"
                               }}
                             >
                               {slot.start}〜{slot.end}
