@@ -1,6 +1,7 @@
 import { google } from "googleapis";
 import { NextRequest, NextResponse } from "next/server";
 import { DaySlots, Slot } from "@/app/types/calendar";
+import JapaneseHolidays from "japanese-holidays";
 
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
@@ -160,8 +161,12 @@ export async function POST(request: NextRequest) {
       const dateJST = new Date(currentDate.getTime() + 9 * 60 * 60 * 1000);
       const dayOfWeek = dateJST.getUTCDay();
 
-      // 土日をスキップ
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      // 日本の祝日をチェック
+      const [year, month, day] = dateStr.split("-").map(Number);
+      const isHoliday = JapaneseHolidays.isHoliday(new Date(year, month - 1, day));
+
+      // 土日と祝日をスキップ
+      if (dayOfWeek !== 0 && dayOfWeek !== 6 && !isHoliday) {
 
         // その日のBusy時間を抽出（日本時間ベースで日付比較）
         const dayBusy = busySlots.filter(busy => {
