@@ -214,14 +214,8 @@ export default function CalendarFinder() {
         .mode-toggle {
           display: flex;
         }
-        .mode-toggle.has-result {
-          display: none;
-        }
         @media (min-width: 768px) {
           .container { padding: 32px; }
-          .mode-toggle.has-result {
-            display: flex;
-          }
         }
       `}</style>
 
@@ -231,20 +225,75 @@ export default function CalendarFinder() {
         </div>
 
         {/* ヘッダー */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-          <h1 style={{
-            fontSize: "clamp(14px, 4vw, 24px)",
-            fontWeight: 600,
-            margin: 0,
-            background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-            color: "white",
-            padding: "6px 12px",
-            borderRadius: 6,
-            display: "inline-block",
-            width: "fit-content"
+        <div style={{ marginBottom: 16 }}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 8,
+            flexWrap: "wrap",
+            gap: 8
           }}>
-            空き時間みえーるくん 📅
-          </h1>
+            <h1 style={{
+              fontSize: "clamp(14px, 4vw, 24px)",
+              fontWeight: 600,
+              margin: 0,
+              background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+              color: "white",
+              padding: "6px 12px",
+              borderRadius: 6,
+              display: "inline-block",
+              width: "fit-content"
+            }}>
+              空き時間みえーるくん 📅
+            </h1>
+            {isAuthenticated && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: "#22c55e"
+                }} />
+                <button
+                  onClick={async () => {
+                    if (window.confirm("Googleカレンダーとの連携を解除しますか？\n再度連携が必要になります。")) {
+                      try {
+                        await fetch("/api/auth/logout", { method: "POST" });
+                        setIsAuthenticated(false);
+                        setResult(null);
+                        setSelectedPeriod(null);
+                        setDurationMin(null);
+                        window.location.reload();
+                      } catch (error) {
+                        console.error("連携解除エラー:", error);
+                        alert("連携解除に失敗しました");
+                      }
+                    }
+                  }}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: 6,
+                    background: "transparent",
+                    border: "1px solid #e5e7eb",
+                    color: "#64748b",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    transition: "all 0.2s"
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "#f1f5f9";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                  }}
+                >
+                  連携解除
+                </button>
+              </div>
+            )}
+          </div>
           <p style={{ color: "#475569", fontSize: 13, margin: 0 }}>
             {loading ? "空き時間を取得中です…" : "期間を選んで空き時間を可視化"}
           </p>
@@ -283,72 +332,9 @@ export default function CalendarFinder() {
           </div>
         )}
 
-        {/* 認証済みステータス */}
-        {isAuthenticated && (
-          <div style={{
-            background: "#f0fdf4",
-            padding: 12,
-            borderRadius: 8,
-            border: "1px solid #86efac",
-            marginBottom: 16,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between"
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: "#22c55e"
-              }} />
-              <span style={{ fontSize: 14, color: "#166534", fontWeight: 500 }}>
-                Googleカレンダーと連携済み
-              </span>
-            </div>
-            <button
-              onClick={async () => {
-                if (window.confirm("Googleカレンダーとの連携を解除しますか？\n再度連携が必要になります。")) {
-                  try {
-                    // APIルートを作って確実にクッキーを削除
-                    await fetch("/api/auth/logout", { method: "POST" });
-                    setIsAuthenticated(false);
-                    setResult(null);
-                    setSelectedPeriod(null);
-                    setDurationMin(null);
-                    window.location.reload();
-                  } catch (error) {
-                    console.error("連携解除エラー:", error);
-                    alert("連携解除に失敗しました");
-                  }
-                }
-              }}
-              style={{
-                padding: "6px 12px",
-                borderRadius: 6,
-                background: "transparent",
-                border: "1px solid #86efac",
-                color: "#166534",
-                cursor: "pointer",
-                fontSize: 13,
-                fontWeight: 500,
-                transition: "all 0.2s"
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#86efac";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "transparent";
-              }}
-            >
-              連携解除
-            </button>
-          </div>
-        )}
-
-        {/* モード切替 - PC画面では常に表示 */}
+        {/* モード切替 - 常に表示（モバイル含む） */}
         <div
-          className={`mode-toggle ${selectedPeriod ? "has-result" : ""}`}
+          className="mode-toggle"
           style={{
             gap: 8,
             marginBottom: 16,
