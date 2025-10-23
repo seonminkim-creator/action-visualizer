@@ -617,22 +617,24 @@ export default function CalendarFinder() {
               </div>
             )}
 
-            {/* 戻りリンク */}
+            {/* リセットボタン */}
             <button
               onClick={handleBack}
               style={{
                 marginTop: 16,
                 padding: "8px 16px",
                 borderRadius: 8,
-                background: "transparent",
-                border: "1px solid #e5e7eb",
+                background: "#0f172a",
+                border: "none",
                 cursor: "pointer",
                 fontSize: 13,
-                color: "#475569",
-                width: "100%"
+                fontWeight: 500,
+                color: "white",
+                width: "100%",
+                transition: "all 0.2s"
               }}
             >
-              ← 期間を選び直す
+              リセット
             </button>
           </div>
         )}
