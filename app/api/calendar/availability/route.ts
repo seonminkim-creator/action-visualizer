@@ -165,6 +165,8 @@ export async function POST(request: NextRequest) {
       const [year, month, day] = dateStr.split("-").map(Number);
       const isHoliday = JapaneseHolidays.isHoliday(new Date(year, month - 1, day));
 
+      console.log(`${dateStr}: dayOfWeek=${dayOfWeek}, isHoliday=${isHoliday}, skip=${dayOfWeek === 0 || dayOfWeek === 6 || isHoliday}`);
+
       // 土日と祝日をスキップ
       if (dayOfWeek !== 0 && dayOfWeek !== 6 && !isHoliday) {
 

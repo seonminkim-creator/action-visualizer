@@ -284,17 +284,41 @@ export default function CalendarFinder() {
             marginBottom: 16,
             display: "flex",
             alignItems: "center",
-            gap: 8
+            justifyContent: "space-between"
           }}>
-            <div style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: "#22c55e"
-            }} />
-            <span style={{ fontSize: 14, color: "#166534", fontWeight: 500 }}>
-              Googleカレンダーと連携済み
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: "#22c55e"
+              }} />
+              <span style={{ fontSize: 14, color: "#166534", fontWeight: 500 }}>
+                Googleカレンダーと連携済み
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                document.cookie = "google_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                document.cookie = "google_refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                setIsAuthenticated(false);
+                setResult(null);
+                setSelectedPeriod(null);
+                window.location.reload();
+              }}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 6,
+                background: "transparent",
+                border: "1px solid #86efac",
+                color: "#166534",
+                cursor: "pointer",
+                fontSize: 13,
+                fontWeight: 500
+              }}
+            >
+              連携解除
+            </button>
           </div>
         )}
 
