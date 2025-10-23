@@ -9,6 +9,7 @@ export type DaySlots = {
   date: string;     // "YYYY-MM-DD"
   weekday: string;  // "月"|"火"|"水"|"木"|"金"|"土"|"日"
   slots: Slot[];
+  isHoliday?: boolean; // 祝日フラグ
 };
 
 export type Period = "this_week" | "next_week" | "next_next_week" | "next_month";

@@ -61,7 +61,7 @@ function getDateRange(period: string): { start: Date; end: Date } {
 }
 
 // Busy時間からFree時間を計算
-function convertBusyToFree(busySlots: { start: string; end: string }[], date: Date, durationMin: number): Slot[] {
+function convertBusyToFree(busySlots: { start: string; end: string }[], date: Date, durationMin: number, isToday: boolean, currentTimeMin: number): Slot[] {
   const freeSlots: Slot[] = [];
   const workStart = 9; // 9:00
   const workEnd = 18; // 18:00
@@ -73,7 +73,8 @@ function convertBusyToFree(busySlots: { start: string; end: string }[], date: Da
     return aTime - bTime;
   });
 
-  let currentTime = workStart * 60; // 分単位
+  // 今日の場合は現在時刻から、それ以外は始業時刻から
+  let currentTime = isToday ? Math.max(workStart * 60, currentTimeMin) : workStart * 60;
 
   sortedBusy.forEach(busy => {
     const busyStart = new Date(busy.start);
@@ -169,9 +170,10 @@ export async function POST(request: NextRequest) {
     const days: DaySlots[] = [];
     const currentDate = new Date(start);
 
-    // 今日の日付（JST）を取得
+    // 今日の日付と時刻（JST）を取得
     const nowJST = new Date(Date.now() + 9 * 60 * 60 * 1000);
     const todayStr = nowJST.toISOString().split("T")[0];
+    const currentTimeMin = nowJST.getUTCHours() * 60 + nowJST.getUTCMinutes();
 
     while (currentDate <= end) {
       // UTC日付をJSTに変換
@@ -190,10 +192,10 @@ export async function POST(request: NextRequest) {
       const checkDate = new Date(year, month - 1, day);
       const isHoliday = JapaneseHolidays.isHoliday(checkDate);
 
-      console.log(`${dateStr}: dayOfWeek=${dayOfWeek}, isHoliday=${isHoliday}, skip=${dayOfWeek === 0 || dayOfWeek === 6 || isHoliday}`);
+      console.log(`${dateStr}: dayOfWeek=${dayOfWeek}, isHoliday=${isHoliday}, skip=${dayOfWeek === 0 || dayOfWeek === 6}`);
 
-      // 土日と祝日をスキップ
-      if (dayOfWeek !== 0 && dayOfWeek !== 6 && !isHoliday) {
+      // 土日はスキップ（祝日は含める）
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
 
         // その日のBusy時間を抽出（日本時間ベースで日付比較）
         const dayBusy = busySlots.filter(busy => {
@@ -203,17 +205,23 @@ export async function POST(request: NextRequest) {
           return busyDateStr === dateStr;
         });
 
+        // 今日かどうかをチェック
+        const isToday = dateStr === todayStr;
+
         // Free時間を計算
         const freeSlots = convertBusyToFree(
           dayBusy.map(b => ({ start: b.start, end: b.end })),
           currentDate,
-          durationMin
+          durationMin,
+          isToday,
+          currentTimeMin
         );
 
         days.push({
           date: dateStr,
           weekday: getWeekday(currentDate),
           slots: freeSlots,
+          isHoliday: isHoliday, // 祝日フラグを追加
         });
       }
 

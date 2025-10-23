@@ -26,6 +26,7 @@ export default function CalendarFinder() {
 対面 or オンライン`);
   const [ignoreKeywords, setIgnoreKeywords] = useState("空き,調整可能");
   const [dateFormat, setDateFormat] = useState("yy/mm/dd（曜日）"); // 日付フォーマット
+  const [maxCandidates, setMaxCandidates] = useState<number | null>(null); // 最大候補数（nullは全部）
 
   // デフォルト設定
   const DEFAULT_SUBJECT = "打合せ候補日のご提案（{期間}）";
@@ -38,6 +39,7 @@ export default function CalendarFinder() {
 対面 or オンライン`;
   const DEFAULT_KEYWORDS = "空き,調整可能";
   const DEFAULT_DATE_FORMAT = "yy/mm/dd（曜日）";
+  const DEFAULT_MAX_CANDIDATES = null; // デフォルトは全部
 
   const periods: Period[] = ["this_week", "next_week", "next_next_week", "next_month"];
   const durations = [15, 30, 45, 60];
@@ -49,11 +51,13 @@ export default function CalendarFinder() {
     const savedBody = localStorage.getItem("mailBody");
     const savedKeywords = localStorage.getItem("ignoreKeywords");
     const savedDateFormat = localStorage.getItem("dateFormat");
+    const savedMaxCandidates = localStorage.getItem("maxCandidates");
 
     if (savedSubject) setMailSubject(savedSubject);
     if (savedBody) setMailBody(savedBody);
     if (savedKeywords) setIgnoreKeywords(savedKeywords);
     if (savedDateFormat) setDateFormat(savedDateFormat);
+    if (savedMaxCandidates) setMaxCandidates(savedMaxCandidates === "null" ? null : Number(savedMaxCandidates));
 
     const params = new URLSearchParams(window.location.search);
     if (params.get("authenticated") === "true") {
@@ -217,12 +221,14 @@ export default function CalendarFinder() {
     const filteredResult = getFilteredResult();
     if (!filteredResult) return { subject: "", body: "" };
 
-    // 候補日を生成
+    // 候補日を生成（祝日は除外、時間枠数を制限）
     const candidateLines: string[] = [];
     filteredResult.forEach(day => {
-      if (day.slots.length > 0) {
+      if (day.slots.length > 0 && !day.isHoliday) {
         const formattedDate = formatDate(day.date, day.weekday);
-        const timeSlots = day.slots.map(s => `${s.start}〜${s.end}`).join("／");
+        // 最大候補数に応じて時間枠を制限
+        const limitedSlots = maxCandidates ? day.slots.slice(0, maxCandidates) : day.slots;
+        const timeSlots = limitedSlots.map(s => `${s.start}〜${s.end}`).join("／");
         candidateLines.push(`・${formattedDate} ${timeSlots}`);
       }
     });
@@ -257,6 +263,7 @@ export default function CalendarFinder() {
       localStorage.setItem("mailBody", mailBody);
       localStorage.setItem("ignoreKeywords", ignoreKeywords);
       localStorage.setItem("dateFormat", dateFormat);
+      localStorage.setItem("maxCandidates", maxCandidates === null ? "null" : String(maxCandidates));
       setShowSettings(false);
       alert("設定を保存しました");
     }
@@ -268,6 +275,7 @@ export default function CalendarFinder() {
       setMailBody(DEFAULT_BODY);
       setIgnoreKeywords(DEFAULT_KEYWORDS);
       setDateFormat(DEFAULT_DATE_FORMAT);
+      setMaxCandidates(DEFAULT_MAX_CANDIDATES);
       alert("デフォルト設定に戻しました");
     }
   };
@@ -315,45 +323,19 @@ export default function CalendarFinder() {
             flexWrap: "wrap",
             gap: 8
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <h1 style={{
-                fontSize: "clamp(14px, 4vw, 24px)",
-                fontWeight: 600,
-                margin: 0,
-                background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-                color: "white",
-                padding: "6px 12px",
-                borderRadius: 6,
-                display: "inline-block",
-                width: "fit-content"
-              }}>
-                空き時間みえーるくん 📅
-              </h1>
-              <button
-                onClick={() => setShowSettings(true)}
-                style={{
-                  padding: "6px 8px",
-                  borderRadius: 6,
-                  background: "transparent",
-                  border: "1px solid #e5e7eb",
-                  color: "#64748b",
-                  cursor: "pointer",
-                  fontSize: 16,
-                  display: "flex",
-                  alignItems: "center",
-                  transition: "all 0.2s"
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#f1f5f9";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "transparent";
-                }}
-                title="設定"
-              >
-                ⚙️
-              </button>
-            </div>
+            <h1 style={{
+              fontSize: "clamp(14px, 4vw, 24px)",
+              fontWeight: 600,
+              margin: 0,
+              background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+              color: "white",
+              padding: "6px 12px",
+              borderRadius: 6,
+              display: "inline-block",
+              width: "fit-content"
+            }}>
+              空き時間みえーるくん 📅
+            </h1>
             {isAuthenticated && (
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div style={{
@@ -604,7 +586,25 @@ export default function CalendarFinder() {
               }}>
                 {periodLabels[selectedPeriod]}
               </h2>
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {mode === "mail" && (
+                  <button
+                    onClick={() => setShowSettings(true)}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: 8,
+                      background: "#0f172a",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      color: "white",
+                      transition: "all 0.2s"
+                    }}
+                  >
+                    カスタマイズ
+                  </button>
+                )}
                 <button
                   onClick={handleBack}
                   style={{
@@ -662,12 +662,12 @@ export default function CalendarFinder() {
                       <div style={{
                         fontSize: 15,
                         fontWeight: 700,
-                        color: "#0f172a",
+                        color: day.isHoliday ? "#ef4444" : "#0f172a",
                         marginBottom: 10,
                         paddingBottom: 6,
                         borderBottom: "2px solid #f1f5f9"
                       }}>
-                        {formattedDate}
+                        {formattedDate} {day.isHoliday && "祝日"}
                       </div>
                       {day.slots.length === 0 ? (
                         <div style={{
@@ -681,21 +681,22 @@ export default function CalendarFinder() {
                         </div>
                       ) : (
                         <div style={{
-                          display: "flex",
-                          flexWrap: "wrap",
+                          display: "grid",
+                          gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
                           gap: 8
                         }}>
                           {day.slots.map((slot, sidx) => (
                             <div
                               key={sidx}
                               style={{
-                                padding: "8px 14px",
+                                padding: "10px 12px",
                                 background: "#f1f5f9",
                                 borderRadius: 6,
-                                fontSize: 14,
+                                fontSize: "clamp(14px, 3.5vw, 16px)",
                                 fontWeight: 500,
                                 color: "#334155",
-                                border: "1px solid #e2e8f0"
+                                border: "1px solid #e2e8f0",
+                                textAlign: "center"
                               }}
                             >
                               {slot.start}〜{slot.end}
@@ -861,7 +862,7 @@ export default function CalendarFinder() {
                 </p>
               </div>
 
-              <div style={{ marginBottom: 24 }}>
+              <div style={{ marginBottom: 16 }}>
                 <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
                   無視するキーワード（カンマ区切り）
                 </label>
@@ -883,11 +884,70 @@ export default function CalendarFinder() {
                 </p>
               </div>
 
-              <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
+                  メール本文に表示する候補数
+                </label>
+                <select
+                  value={maxCandidates === null ? "all" : String(maxCandidates)}
+                  onChange={(e) => setMaxCandidates(e.target.value === "all" ? null : Number(e.target.value))}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: 6,
+                    border: "1px solid #e5e7eb",
+                    fontSize: 14,
+                    background: "white"
+                  }}
+                >
+                  <option value="1">1つまで</option>
+                  <option value="2">2つまで</option>
+                  <option value="3">3つまで</option>
+                  <option value="all">全部</option>
+                </select>
+                <p style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                  メールに含める候補日の最大数を制限できます
+                </p>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => setShowSettings(false)}
+                    style={{
+                      flex: 1,
+                      padding: "10px 16px",
+                      borderRadius: 6,
+                      background: "transparent",
+                      border: "1px solid #e5e7eb",
+                      cursor: "pointer",
+                      fontSize: 14,
+                      fontWeight: 500
+                    }}
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    onClick={handleSaveSettings}
+                    style={{
+                      flex: 1,
+                      padding: "10px 16px",
+                      borderRadius: 6,
+                      background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                      color: "white",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: 14,
+                      fontWeight: 500
+                    }}
+                  >
+                    保存
+                  </button>
+                </div>
                 <button
                   onClick={handleResetSettings}
                   style={{
-                    padding: "8px 16px",
+                    padding: "10px 16px",
                     borderRadius: 6,
                     background: "transparent",
                     border: "1px solid #ef4444",
@@ -899,37 +959,6 @@ export default function CalendarFinder() {
                 >
                   デフォルトに戻す
                 </button>
-                <div style={{ display: "flex", gap: 8 }}>
-                <button
-                  onClick={() => setShowSettings(false)}
-                  style={{
-                    padding: "8px 16px",
-                    borderRadius: 6,
-                    background: "transparent",
-                    border: "1px solid #e5e7eb",
-                    cursor: "pointer",
-                    fontSize: 14,
-                    fontWeight: 500
-                  }}
-                >
-                  キャンセル
-                </button>
-                <button
-                  onClick={handleSaveSettings}
-                  style={{
-                    padding: "8px 16px",
-                    borderRadius: 6,
-                    background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-                    color: "white",
-                    border: "none",
-                    cursor: "pointer",
-                    fontSize: 14,
-                    fontWeight: 500
-                  }}
-                >
-                  保存
-                </button>
-                </div>
               </div>
             </div>
           </div>
