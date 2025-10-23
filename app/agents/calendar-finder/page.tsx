@@ -25,6 +25,19 @@ export default function CalendarFinder() {
 ＜方法＞
 対面 or オンライン`);
   const [ignoreKeywords, setIgnoreKeywords] = useState("空き,調整可能");
+  const [dateFormat, setDateFormat] = useState("yy/mm/dd（曜日）"); // 日付フォーマット
+
+  // デフォルト設定
+  const DEFAULT_SUBJECT = "打合せ候補日のご提案（{期間}）";
+  const DEFAULT_BODY = `＜候補日＞
+{候補日}
+
+※上記日程が難しい場合は、ご都合のよろしい候補をお知らせいただけますと幸いです。
+
+＜方法＞
+対面 or オンライン`;
+  const DEFAULT_KEYWORDS = "空き,調整可能";
+  const DEFAULT_DATE_FORMAT = "yy/mm/dd（曜日）";
 
   const periods: Period[] = ["this_week", "next_week", "next_next_week", "next_month"];
   const durations = [15, 30, 45, 60];
@@ -35,10 +48,12 @@ export default function CalendarFinder() {
     const savedSubject = localStorage.getItem("mailSubject");
     const savedBody = localStorage.getItem("mailBody");
     const savedKeywords = localStorage.getItem("ignoreKeywords");
+    const savedDateFormat = localStorage.getItem("dateFormat");
 
     if (savedSubject) setMailSubject(savedSubject);
     if (savedBody) setMailBody(savedBody);
     if (savedKeywords) setIgnoreKeywords(savedKeywords);
+    if (savedDateFormat) setDateFormat(savedDateFormat);
 
     const params = new URLSearchParams(window.location.search);
     if (params.get("authenticated") === "true") {
@@ -171,6 +186,31 @@ export default function CalendarFinder() {
     return lines.join("\n");
   };
 
+  const formatDate = (dateStr: string, weekday: string): string => {
+    const dateParts = dateStr.split("-");
+    const year = dateParts[0];
+    const month = dateParts[1];
+    const day = dateParts[2];
+
+    // 日付フォーマットに応じて変換
+    switch (dateFormat) {
+      case "yyyy/mm/dd（曜日）":
+        return `${year}/${month}/${day}（${weekday}）`;
+      case "yy/mm/dd（曜日）":
+        return `${year.slice(2)}/${month}/${day}（${weekday}）`;
+      case "mm/dd（曜日）":
+        return `${month}/${day}（${weekday}）`;
+      case "yyyy/mm/dd":
+        return `${year}/${month}/${day}`;
+      case "yy/mm/dd":
+        return `${year.slice(2)}/${month}/${day}`;
+      case "mm/dd":
+        return `${month}/${day}`;
+      default:
+        return `${year.slice(2)}/${month}/${day}（${weekday}）`;
+    }
+  };
+
   const formatMailText = (): { subject: string; body: string } => {
     if (!result || !selectedPeriod) return { subject: "", body: "" };
 
@@ -181,9 +221,7 @@ export default function CalendarFinder() {
     const candidateLines: string[] = [];
     filteredResult.forEach(day => {
       if (day.slots.length > 0) {
-        const dateParts = day.date.split("-");
-        const year = dateParts[0].slice(2); // "25"
-        const formattedDate = `${year}/${dateParts[1]}/${dateParts[2]}（${day.weekday}）`;
+        const formattedDate = formatDate(day.date, day.weekday);
         const timeSlots = day.slots.map(s => `${s.start}〜${s.end}`).join("／");
         candidateLines.push(`・${formattedDate} ${timeSlots}`);
       }
@@ -214,11 +252,24 @@ export default function CalendarFinder() {
   };
 
   const handleSaveSettings = () => {
-    localStorage.setItem("mailSubject", mailSubject);
-    localStorage.setItem("mailBody", mailBody);
-    localStorage.setItem("ignoreKeywords", ignoreKeywords);
-    setShowSettings(false);
-    alert("設定を保存しました");
+    if (window.confirm("設定を保存しますか？")) {
+      localStorage.setItem("mailSubject", mailSubject);
+      localStorage.setItem("mailBody", mailBody);
+      localStorage.setItem("ignoreKeywords", ignoreKeywords);
+      localStorage.setItem("dateFormat", dateFormat);
+      setShowSettings(false);
+      alert("設定を保存しました");
+    }
+  };
+
+  const handleResetSettings = () => {
+    if (window.confirm("デフォルト設定に戻しますか？\n現在の設定は失われます。")) {
+      setMailSubject(DEFAULT_SUBJECT);
+      setMailBody(DEFAULT_BODY);
+      setIgnoreKeywords(DEFAULT_KEYWORDS);
+      setDateFormat(DEFAULT_DATE_FORMAT);
+      alert("デフォルト設定に戻しました");
+    }
   };
 
   return (
@@ -782,6 +833,34 @@ export default function CalendarFinder() {
                 </p>
               </div>
 
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
+                  日付フォーマット
+                </label>
+                <select
+                  value={dateFormat}
+                  onChange={(e) => setDateFormat(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: 6,
+                    border: "1px solid #e5e7eb",
+                    fontSize: 14,
+                    background: "white"
+                  }}
+                >
+                  <option value="yy/mm/dd（曜日）">25/10/27（月）</option>
+                  <option value="yyyy/mm/dd（曜日）">2025/10/27（月）</option>
+                  <option value="mm/dd（曜日）">10/27（月）</option>
+                  <option value="yy/mm/dd">25/10/27</option>
+                  <option value="yyyy/mm/dd">2025/10/27</option>
+                  <option value="mm/dd">10/27</option>
+                </select>
+                <p style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                  メール本文の日付表示形式を選択できます
+                </p>
+              </div>
+
               <div style={{ marginBottom: 24 }}>
                 <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
                   無視するキーワード（カンマ区切り）
@@ -804,7 +883,23 @@ export default function CalendarFinder() {
                 </p>
               </div>
 
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <div style={{ display: "flex", gap: 8, justifyContent: "space-between", alignItems: "center" }}>
+                <button
+                  onClick={handleResetSettings}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 6,
+                    background: "transparent",
+                    border: "1px solid #ef4444",
+                    color: "#ef4444",
+                    cursor: "pointer",
+                    fontSize: 14,
+                    fontWeight: 500
+                  }}
+                >
+                  デフォルトに戻す
+                </button>
+                <div style={{ display: "flex", gap: 8 }}>
                 <button
                   onClick={() => setShowSettings(false)}
                   style={{
@@ -834,6 +929,7 @@ export default function CalendarFinder() {
                 >
                   保存
                 </button>
+                </div>
               </div>
             </div>
           </div>
