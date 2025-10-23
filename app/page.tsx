@@ -82,7 +82,7 @@ export default function Home() {
             WebkitTextFillColor: "transparent",
             backgroundClip: "text"
           }}>
-            AIエージェント・ディクショナリー
+            営業AIポータル
           </h1>
           <p style={{
             fontSize: "clamp(14px, 3vw, 18px)",
@@ -90,7 +90,7 @@ export default function Home() {
             margin: 0,
             fontWeight: 500
           }}>
-            あなたの仕事を効率化する専門AIアシスタント
+            営業活動をアシスタントする専門AIエージェント
           </p>
         </div>
 
@@ -139,23 +139,25 @@ export default function Home() {
                 </div>
 
                 {/* タイトルと説明 */}
-                <h2 style={{
-                  fontSize: 20,
-                  fontWeight: 600,
-                  color: "#0f172a",
-                  marginBottom: 8,
-                  margin: 0
-                }}>
-                  {agent.title}
-                </h2>
-                <p style={{
-                  fontSize: 14,
-                  color: "#64748b",
-                  lineHeight: 1.6,
-                  margin: 0
-                }}>
-                  {agent.description}
-                </p>
+                <div style={{ paddingRight: isActive ? 40 : 0 }}>
+                  <h2 style={{
+                    fontSize: 20,
+                    fontWeight: 600,
+                    color: "#0f172a",
+                    marginBottom: 8,
+                    margin: 0
+                  }}>
+                    {agent.title}
+                  </h2>
+                  <p style={{
+                    fontSize: 14,
+                    color: "#64748b",
+                    lineHeight: 1.6,
+                    margin: 0
+                  }}>
+                    {agent.description}
+                  </p>
+                </div>
 
                 {/* 矢印アイコン (activeの場合のみ) */}
                 {isActive && (
@@ -164,7 +166,8 @@ export default function Home() {
                     bottom: 20,
                     right: 20,
                     fontSize: 24,
-                    color: "#cbd5e1"
+                    color: "#cbd5e1",
+                    lineHeight: 1
                   }}>
                     →
                   </div>
@@ -229,7 +232,7 @@ export default function Home() {
           color: "#94a3b8",
           textAlign: "center"
         }}>
-          AIエージェント・ディクショナリー - あなたの仕事をサポートする専門AIツール集
+          営業AIポータル - 営業活動をアシスタントする専門AIエージェント
         </p>
       </div>
     </div>

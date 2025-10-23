@@ -9,8 +9,8 @@ const notoSansJP = Noto_Sans_JP({
 });
 
 export const metadata: Metadata = {
-  title: "タスクみえーるくん",
-  description: "メール・共有内容から今やるべきことを可視化する",
+  title: "営業AIポータル",
+  description: "営業活動をアシスタントする専門AIエージェント - タスク管理、カレンダー連携、メール作成、会議要約",
 };
 
 export default function RootLayout({
