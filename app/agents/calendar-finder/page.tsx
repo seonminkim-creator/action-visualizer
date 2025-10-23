@@ -11,8 +11,10 @@ export default function CalendarFinder() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DaySlots[] | null>(null);
   const [copied, setCopied] = useState(false);
+  const [durationMin, setDurationMin] = useState<number>(60);
 
   const periods: Period[] = ["this_week", "next_week", "next_next_week", "next_month"];
+  const durations = [15, 30, 45, 60];
 
   const handlePeriodClick = async (period: Period) => {
     setSelectedPeriod(period);
@@ -189,37 +191,74 @@ export default function CalendarFinder() {
           </div>
         )}
 
-        {/* 期間チップ */}
-        {!selectedPeriod && !loading && (
+        {/* 期間チップ（常に表示） */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+          gap: 12,
+          marginBottom: 12
+        }}>
+          {periods.map(period => (
+            <button
+              key={period}
+              onClick={() => handlePeriodClick(period)}
+              className="period-chip"
+              disabled={loading}
+              style={{
+                padding: "16px 20px",
+                borderRadius: 8,
+                background: selectedPeriod === period ? "#0f172a" : "#e5e7eb",
+                border: "none",
+                cursor: loading ? "not-allowed" : "pointer",
+                fontSize: 15,
+                fontWeight: 600,
+                color: selectedPeriod === period ? "white" : "#64748b",
+                whiteSpace: "nowrap",
+                boxShadow: selectedPeriod === period ? "0 2px 4px rgba(0,0,0,0.1)" : "none",
+                opacity: loading ? 0.6 : 1
+              }}
+            >
+              {periodLabels[period]}
+            </button>
+          ))}
+        </div>
+
+        {/* 所要時間選択 */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: "#475569",
+            marginBottom: 8
+          }}>
+            所要時間
+          </div>
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
-            gap: 12,
-            marginBottom: 12
+            gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))",
+            gap: 8
           }}>
-            {periods.map(period => (
+            {durations.map(duration => (
               <button
-                key={period}
-                onClick={() => handlePeriodClick(period)}
-                className="period-chip"
+                key={duration}
+                onClick={() => setDurationMin(duration)}
                 style={{
-                  padding: "16px 20px",
-                  borderRadius: 8,
-                  background: "#0f172a",
-                  border: "none",
+                  padding: "12px 16px",
+                  borderRadius: 6,
+                  background: durationMin === duration ? "#0f172a" : "white",
+                  border: `1px solid ${durationMin === duration ? "#0f172a" : "#e5e7eb"}`,
                   cursor: "pointer",
-                  fontSize: 15,
-                  fontWeight: 600,
-                  color: "white",
-                  whiteSpace: "nowrap",
-                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                  fontSize: 14,
+                  fontWeight: 500,
+                  color: durationMin === duration ? "white" : "#64748b",
+                  transition: "all 0.2s"
                 }}
               >
-                {periodLabels[period]}
+                {duration}分
               </button>
             ))}
           </div>
-        )}
+        </div>
 
         {/* ローディング */}
         {loading && (
