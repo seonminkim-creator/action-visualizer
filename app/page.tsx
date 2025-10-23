@@ -16,7 +16,6 @@ function isAnalyzeResult(x: unknown): x is AnalyzeResult {
   if (!Array.isArray(o.inferred_actions)) return false;
   if (typeof o.detailed_analysis !== "string") return false;
   
-  // inferred_actionsの型チェック
   return o.inferred_actions.every((item: any) => 
     item && 
     typeof item === "object" && 
@@ -94,7 +93,7 @@ export default function ActionVisualizer() {
     setLoading(true);
     setError(null);
     setResult(null);
-    setShowAllTasks(false); // 新しい解析時は折りたたむ
+    setShowAllTasks(false);
     const api = await callAnalyzeAPI(text, userName);
     if (api) {
       setResult(api);
@@ -106,6 +105,10 @@ export default function ActionVisualizer() {
       setHistory((h) => [{ id: crypto.randomUUID(), at: Date.now(), input: text, result: mock }, ...h].slice(0, 50));
     }
     setLoading(false);
+  }
+
+  function deleteHistoryItem(id: string) {
+    setHistory((h) => h.filter(item => item.id !== id));
   }
 
   return (
@@ -258,7 +261,6 @@ export default function ActionVisualizer() {
 
         {isAnalyzeResult(result) && !loading && (
           <>
-            {/* セクション1: 今すべきこと */}
             <div style={{ background: "white", borderRadius: 8, padding: "16px", marginTop: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
               <div style={{ fontSize: 13, marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid #e5e7eb", wordBreak: "break-word" }}>
                 <span style={{ fontWeight: 600, color: "#0f172a" }}>要約：</span>
@@ -354,7 +356,6 @@ export default function ActionVisualizer() {
               </div>
             </div>
 
-            {/* セクション2: 詳細解説 */}
             <div style={{ background: "white", borderRadius: 8, padding: "16px", marginTop: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
               <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12, color: "#0f172a" }}>📝 詳細解説</h2>
               <p style={{ fontSize: 13, color: "#334155", lineHeight: 1.7, margin: 0, wordBreak: "break-word" }}>
@@ -378,6 +379,7 @@ export default function ActionVisualizer() {
                     padding: 12,
                     cursor: "pointer",
                     transition: "all 0.2s",
+                    position: "relative"
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
                   onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#e5e7eb")}
@@ -386,11 +388,37 @@ export default function ActionVisualizer() {
                     setResult(h.result);
                   }}
                 >
-                  <div style={{ fontSize: 11, color: "#64748b", marginBottom: 6 }}>{new Date(h.at).toLocaleString("ja-JP")}</div>
-                  <div style={{ fontSize: 13, color: "#1e293b" }}>
+                  <div style={{ fontSize: 11, color: "#64748b", marginBottom: 6, paddingRight: 30 }}>
+                    {new Date(h.at).toLocaleString("ja-JP")}
+                  </div>
+                  <div style={{ fontSize: 13, color: "#1e293b", paddingRight: 30 }}>
                     {String(h.input).slice(0, 120)}
                     {String(h.input).length > 120 ? "…" : ""}
                   </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm("この履歴を削除しますか？")) {
+                        deleteHistoryItem(h.id);
+                      }
+                    }}
+                    style={{
+                      position: "absolute",
+                      right: 8,
+                      top: 8,
+                      background: "transparent",
+                      border: "none",
+                      color: "#dc2626",
+                      cursor: "pointer",
+                      fontSize: 18,
+                      padding: 4,
+                      lineHeight: 1
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = "#b91c1c"}
+                    onMouseLeave={(e) => e.currentTarget.style.color = "#dc2626"}
+                  >
+                    ✕
+                  </button>
                 </li>
               ))}
             </ul>
