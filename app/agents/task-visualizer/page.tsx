@@ -169,6 +169,59 @@ export default function ActionVisualizer() {
           </p>
         </div>
 
+        {/* 利用シーン説明 */}
+        {!result && !loading && (
+          <div style={{
+            background: "white",
+            borderRadius: 8,
+            padding: "16px 20px",
+            marginBottom: 12,
+            border: "1px solid #e5e7eb"
+          }}>
+            <h3 style={{
+              fontSize: 14,
+              fontWeight: 600,
+              color: "#0f172a",
+              marginBottom: 12,
+              margin: 0
+            }}>
+              💡 こんな時に便利
+            </h3>
+            <div style={{
+              display: "grid",
+              gap: 8,
+              fontSize: 12,
+              color: "#64748b",
+              lineHeight: 1.6
+            }}>
+              <div>
+                <span style={{ fontWeight: 600, color: "#475569" }}>📧 顧客メール</span>
+                　依頼内容と期日を抜き出し、返信・確認・提出タスクに分解
+              </div>
+              <div>
+                <span style={{ fontWeight: 600, color: "#475569" }}>💬 上司の指示</span>
+                　長文チャットから要点と期限を整理、確認事項を可視化
+              </div>
+              <div>
+                <span style={{ fontWeight: 600, color: "#475569" }}>📋 RFP・質問票</span>
+                　回答項目を分類し、担当を割り当て、不足情報をリスト化
+              </div>
+              <div>
+                <span style={{ fontWeight: 600, color: "#475569" }}>🎯 デモ・見積依頼</span>
+                　準備物、日程候補、事前確認事項を自動抽出
+              </div>
+              <div>
+                <span style={{ fontWeight: 600, color: "#475569" }}>📝 契約更新案内</span>
+                　必要な実績レポートや条件を洗い出し、逆算スケジュール化
+              </div>
+              <div>
+                <span style={{ fontWeight: 600, color: "#475569" }}>⚠️ 不具合・要望</span>
+                　再現確認、一次回答、社内連携のタスクを作成
+              </div>
+            </div>
+          </div>
+        )}
+
         <div style={{ display: "grid", gap: 12 }}>
           <textarea
             placeholder="ここに文章を貼り付け（メール、議事録など）"
