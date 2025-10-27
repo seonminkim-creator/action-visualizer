@@ -63,16 +63,35 @@ export default function ActionVisualizer() {
   const [showAllTasks, setShowAllTasks] = useState<boolean>(false);
   const [userName, setUserName] = useState<string>("");
   const [history, setHistory] = useState<Array<{ id: string; at: number; input: string; result: AnalyzeResult }>>([]);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [password, setPassword] = useState<string>("");
+  const [passwordError, setPasswordError] = useState<string>("");
 
   useEffect(() => {
     try {
+      const authenticated = sessionStorage.getItem("taskvisualizer_auth");
+      if (authenticated === "true") {
+        setIsAuthenticated(true);
+      }
+
       const raw = localStorage.getItem("actionviz_history_v1");
       if (raw) setHistory(JSON.parse(raw));
-      
+
       const savedUserName = localStorage.getItem("actionviz_username");
       if (savedUserName) setUserName(savedUserName);
     } catch {}
   }, []);
+
+  function handlePasswordSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (password === "1234") {
+      setIsAuthenticated(true);
+      sessionStorage.setItem("taskvisualizer_auth", "true");
+      setPasswordError("");
+    } else {
+      setPasswordError("パスワードが正しくありません");
+    }
+  }
 
   useEffect(() => {
     try {
@@ -112,6 +131,71 @@ export default function ActionVisualizer() {
     setHistory((h) => h.filter(item => item.id !== id));
   }
 
+  // パスワード認証画面
+  if (!isAuthenticated) {
+    return (
+      <div style={{ minHeight: "100vh", padding: "16px", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ margin: "0 auto", maxWidth: 400, width: "100%" }}>
+          <div style={{ marginBottom: 16 }}>
+            <BackToHome />
+          </div>
+          <div style={{ background: "white", borderRadius: 12, padding: 32, boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
+            <h1 style={{
+              fontSize: 24,
+              fontWeight: 600,
+              margin: "0 0 8px 0",
+              color: "#0f172a",
+              textAlign: "center"
+            }}>
+              🔒 タスク整理くん
+            </h1>
+            <p style={{ fontSize: 14, color: "#64748b", textAlign: "center", marginBottom: 24 }}>
+              このページはパスワード保護されています
+            </p>
+            <form onSubmit={handlePasswordSubmit}>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="パスワードを入力"
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 8,
+                  border: "1px solid #d1d5db",
+                  fontSize: 14,
+                  marginBottom: 12,
+                  boxSizing: "border-box"
+                }}
+              />
+              {passwordError && (
+                <div style={{ color: "#dc2626", fontSize: 13, marginBottom: 12, padding: 8, background: "#fee2e2", borderRadius: 6 }}>
+                  {passwordError}
+                </div>
+              )}
+              <button
+                type="submit"
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 8,
+                  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  color: "white",
+                  border: "none",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  fontSize: 14
+                }}
+              >
+                ログイン
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ minHeight: "100vh", padding: "16px", background: "#f8fafc" }}>
       <style>{`
@@ -133,9 +217,9 @@ export default function ActionVisualizer() {
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-            <h1 style={{ 
-              fontSize: "clamp(14px, 4vw, 24px)", 
-              fontWeight: 600, 
+            <h1 style={{
+              fontSize: "clamp(14px, 4vw, 24px)",
+              fontWeight: 600,
               margin: 0,
               background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
               color: "white",
@@ -143,7 +227,7 @@ export default function ActionVisualizer() {
               borderRadius: 6,
               display: "inline-block"
             }}>
-              タスクみえーるくん 👀
+              タスク整理くん 👀
             </h1>
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
               <label style={{ fontSize: 12, color: "#475569", whiteSpace: "nowrap" }}>名前:</label>
@@ -456,7 +540,7 @@ export default function ActionVisualizer() {
         )}
 
         <p style={{ marginTop: 20, fontSize: 11, color: "#64748b", textAlign: "center" }}>
-          タスクみえーるくん - AIが文章からやるべきことを整理します
+          タスク整理くん - AIが文章からやるべきことを整理します
         </p>
       </div>
     </div>

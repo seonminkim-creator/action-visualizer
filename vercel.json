@@ -1,0 +1,12 @@
+{
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "regions": ["hnd1"],
+  "env": {
+    "GEMINI_API_KEY": "@gemini-api-key",
+    "GOOGLE_SEARCH_API_KEY": "@google-search-api-key",
+    "GOOGLE_SEARCH_ENGINE_ID": "@google-search-engine-id"
+  }
+}

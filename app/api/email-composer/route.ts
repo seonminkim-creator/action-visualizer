@@ -1,0 +1,201 @@
+import { NextRequest, NextResponse } from "next/server";
+
+export const runtime = "edge";
+
+type TaskType = "reply" | "compose" | "revise";
+
+export async function POST(req: NextRequest) {
+  try {
+    const { taskType, inputText, additionalInfo, styleProfile } = await req.json();
+
+    if (!taskType || !inputText) {
+      return NextResponse.json(
+        { error: "タスクタイプとメール内容は必須です" },
+        { status: 400 }
+      );
+    }
+
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey) {
+      console.error("❌ GEMINI_API_KEY が設定されていません");
+      return NextResponse.json(
+        { error: "APIキーが設定されていません" },
+        { status: 500 }
+      );
+    }
+
+    // システムプロンプト
+    const SYSTEM_PROMPT = `あなたは私のビジネスメール作成アシスタントです。
+私が受け取ったメールへの返信や、新規メールの作成・添削を依頼します。
+以下の条件と文体をベースに、依頼内容を処理してください。
+
+■あなたの役割
+私のビジネスメール作成アシスタント
+
+■タスク
+・受信メールへの返信案作成
+・新規メールの作成
+・既存メール文の添削
+
+■文体・トーン
+・ビジネス日本語として丁寧で誠実であること
+・かしこまりすぎず、あたたかみ・親しみのある自然な言葉づかい
+・「ありがとうございます」「恐縮です」「承知いたしました」など、礼節を保ちながら柔らかい表現を使う
+・相手との関係を深めるようなトーン
+
+■構成ルール
+1.  冒頭であいさつ（例：「大変お世話になっております。株式会社PECOの信畑です。」）
+2.  相手のメール内容への感謝・共感を一文添える
+3.  本題（要件）を簡潔に明確に伝える
+4.  最後に、今後の流れやお願い・お礼・フォローの言葉で締める
+5.  適宜改行を入れて、読みやすくする
+
+■使いたい文の雰囲気（例）
+・「ご連絡ありがとうございます。承知いたしました。」
+・「お忙しいところ恐れ入りますが、どうぞよろしくお願いいたします。」
+・「ご確認のうえ、不明点などございましたらお気軽にお知らせくださいませ。」
+・「ご一緒できることを大変嬉しく思っております。」
+
+■私のメールでよくあるシーン
+・業種：農業向けの営業
+・やり取り相手：JA（農業協同組合）、卸売業者、市場関係者
+・トピック例：農産物の取引、新規契約、価格交渉、出荷調整、販促企画、資料送付など
+
+■あなたの出力形式
+・件名は不要、本文のみを生成する
+・一文ごとに改行を多めに入れて読みやすくする
+・不要な難語や固い表現は避け、自然で実務的に使えるメール文に仕上げる
+
+${styleProfile ? `\n■学習済みのユーザーの文体\n以下は、このユーザーの実際のメールから分析した文体の特徴です。今後のメール生成では、この文体を最優先で反映してください：\n\n${styleProfile}\n` : ""}`;
+
+    // タスクごとのユーザープロンプト
+    let userPrompt = "";
+    if (taskType === "reply") {
+      userPrompt = `以下のメールに対する返信を作成してください。
+
+【受信メール】
+${inputText}
+
+${additionalInfo ? `【返信内容の指示】\n${additionalInfo}\n` : ""}
+上記の条件に基づいて、適切な返信メール文を本文のみ生成してください。`;
+    } else if (taskType === "compose") {
+      userPrompt = `以下の要件に基づいて、新規メールを作成してください。
+
+【作成要件】
+${inputText}
+
+${additionalInfo ? `【補足情報】\n${additionalInfo}\n` : ""}
+上記の条件に基づいて、適切なメール文を本文のみ生成してください。`;
+    } else if (taskType === "revise") {
+      userPrompt = `以下のメール文を添削してください。
+
+【添削対象メール】
+${inputText}
+
+${additionalInfo ? `【添削指示】\n${additionalInfo}\n` : ""}
+上記の条件に基づいて、より良いメール文を本文のみ生成してください。`;
+    }
+
+    console.log(`📧 メール生成リクエスト: タスクタイプ=${taskType}`);
+
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${geminiApiKey}`;
+
+    const requestBody = {
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: SYSTEM_PROMPT + "\n\n" + userPrompt,
+            },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.7,
+        topP: 0.95,
+        topK: 40,
+        maxOutputTokens: 2048,
+      },
+    };
+
+    // エクスポネンシャルバックオフでリトライ
+    let lastError = null;
+    const maxRetries = 7;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await fetch(geminiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log(`✅ Gemini API成功（試行${attempt}回目）`);
+
+          const textOut =
+            data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+
+          if (!textOut || textOut.trim() === "") {
+            throw new Error("メール生成結果が空です");
+          }
+
+          return NextResponse.json({ email: textOut.trim() });
+        }
+
+        // 503エラーの場合、エクスポネンシャルバックオフでリトライ
+        if (response.status === 503 && attempt < maxRetries) {
+          const backoffSeconds = Math.pow(2, attempt);
+          console.log(
+            `⏳ Gemini APIリトライ ${attempt}/${maxRetries} (503エラー、${backoffSeconds}秒後に再試行)`
+          );
+          await new Promise((resolve) =>
+            setTimeout(resolve, backoffSeconds * 1000)
+          );
+          continue;
+        }
+
+        const errorText = await response.text();
+        console.error(
+          `❌ Gemini API エラー (試行${attempt}/${maxRetries}):`,
+          errorText
+        );
+        lastError = errorText;
+        continue;
+      } catch (error) {
+        console.error(
+          `❌ リクエストエラー (試行${attempt}/${maxRetries}):`,
+          error
+        );
+        lastError = error;
+
+        if (attempt < maxRetries) {
+          const backoffSeconds = Math.pow(2, attempt);
+          console.log(
+            `⏳ リトライ中... (${attempt}/${maxRetries}、${backoffSeconds}秒後に再試行)`
+          );
+          await new Promise((resolve) =>
+            setTimeout(resolve, backoffSeconds * 1000)
+          );
+        }
+      }
+    }
+
+    // すべてのリトライが失敗した場合
+    console.error(`❌ メール生成に失敗しました（${maxRetries}回試行）:`, lastError);
+    return NextResponse.json(
+      { error: "メール生成に失敗しました。もう一度お試しください。" },
+      { status: 500 }
+    );
+  } catch (error) {
+    console.error("❌ 予期しないエラー:", error);
+    return NextResponse.json(
+      { error: "サーバーエラーが発生しました" },
+      { status: 500 }
+    );
+  }
+}

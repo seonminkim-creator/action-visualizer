@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { CheckSquare, Calendar, Mail, MessageSquare } from "lucide-react";
+import { CheckSquare, Calendar, Mail, MessageSquare, Sprout } from "lucide-react";
 
 type Agent = {
   id: string;
@@ -10,21 +10,13 @@ type Agent = {
   path: string;
   gradient: string;
   status: "active" | "coming-soon";
+  badge?: string;
 };
 
 const agents: Agent[] = [
   {
-    id: "task-visualizer",
-    title: "タスクみえーるくん",
-    description: "メール・議事録からやるべきことを可視化",
-    icon: <CheckSquare size={32} />,
-    path: "/agents/task-visualizer",
-    gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    status: "active"
-  },
-  {
     id: "calendar-finder",
-    title: "空き時間みえーるくん",
+    title: "空き時間検索くん",
     description: "カレンダーから空き時間をすぐ可視化",
     icon: <Calendar size={32} />,
     path: "/agents/calendar-finder",
@@ -32,21 +24,42 @@ const agents: Agent[] = [
     status: "active"
   },
   {
-    id: "email-drafter",
-    title: "メール叩きくん",
-    description: "メールのテンプレート・ドラフトを自動作成",
-    icon: <Mail size={32} />,
-    path: "/agents/email-drafter",
-    gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
-    status: "coming-soon"
+    id: "agri-talk",
+    title: "話題提案くん",
+    description: "農家さんとの会話のきっかけになる旬な話題を提供",
+    icon: <Sprout size={32} />,
+    path: "/agents/agri-talk",
+    gradient: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+    status: "active",
+    badge: "New!"
   },
   {
     id: "meeting-recorder",
-    title: "会議まとめーるくん",
-    description: "社内会議をセールス視点で要約・TODO抽出",
+    title: "会議まとめくん",
+    description: "会議の内容から議事録とTODOを自動生成",
     icon: <MessageSquare size={32} />,
     path: "/agents/meeting-recorder",
-    gradient: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+    gradient: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
+    status: "active",
+    badge: "New!"
+  },
+  {
+    id: "email-composer",
+    title: "メール返信叩きくん",
+    description: "ビジネスメールの作成・返信・添削をお手伝い",
+    icon: <Mail size={32} />,
+    path: "/agents/email-composer",
+    gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+    status: "active",
+    badge: "New!"
+  },
+  {
+    id: "task-visualizer",
+    title: "タスク整理くん",
+    description: "メール・議事録からやるべきことを可視化",
+    icon: <CheckSquare size={32} />,
+    path: "/agents/task-visualizer",
+    gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
     status: "coming-soon"
   }
 ];
@@ -134,6 +147,18 @@ export default function Home() {
                       fontWeight: 600
                     }}>
                       Coming Soon
+                    </span>
+                  )}
+                  {isActive && agent.badge && (
+                    <span style={{
+                      padding: "4px 12px",
+                      borderRadius: 20,
+                      background: "#dcfce7",
+                      color: "#16a34a",
+                      fontSize: 12,
+                      fontWeight: 600
+                    }}>
+                      {agent.badge}
                     </span>
                   )}
                 </div>
@@ -226,14 +251,39 @@ export default function Home() {
         </div>
 
         {/* フッター */}
-        <p style={{
-          marginTop: 48,
-          fontSize: 12,
-          color: "#94a3b8",
-          textAlign: "center"
-        }}>
-          営業AIポータル - 営業活動をアシスタントする専門AIエージェント
-        </p>
+        <div style={{ marginTop: 48, textAlign: "center" }}>
+          <Link
+            href="/admin"
+            style={{
+              display: "inline-block",
+              fontSize: 12,
+              color: "#94a3b8",
+              textDecoration: "none",
+              padding: "8px 16px",
+              borderRadius: "6px",
+              border: "1px solid #e5e7eb",
+              transition: "all 0.2s",
+              marginBottom: 16
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "#667eea";
+              e.currentTarget.style.borderColor = "#667eea";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "#94a3b8";
+              e.currentTarget.style.borderColor = "#e5e7eb";
+            }}
+          >
+            ⚙️ システム管理
+          </Link>
+          <p style={{
+            fontSize: 12,
+            color: "#94a3b8",
+            margin: 0
+          }}>
+            営業AIポータル - 営業活動をアシスタントする専門AIエージェント
+          </p>
+        </div>
       </div>
     </div>
   );
