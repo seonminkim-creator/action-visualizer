@@ -224,9 +224,55 @@ export async function POST(req: NextRequest) {
                 },
               ],
               generationConfig: {
-                temperature: 0.2,
-                maxOutputTokens: 2048,
+                temperature: 0.3,
+                topP: 0.95,
+                topK: 40,
+                maxOutputTokens: 8192,
                 responseMimeType: "application/json",
+                responseSchema: {
+                  type: "object",
+                  properties: {
+                    summary: {
+                      type: "string",
+                      description: "文章の要約（140文字以内）"
+                    },
+                    explicit_points: {
+                      type: "array",
+                      items: {
+                        type: "string"
+                      },
+                      description: "明示的な依頼内容のリスト"
+                    },
+                    inferred_actions: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          text: {
+                            type: "string",
+                            description: "タスク内容"
+                          },
+                          priority: {
+                            type: "string",
+                            enum: ["high", "medium", "low"],
+                            description: "優先度"
+                          },
+                          assignee: {
+                            type: "string",
+                            description: "担当者名"
+                          }
+                        },
+                        required: ["text", "priority", "assignee"]
+                      },
+                      description: "推論された対応タスクのリスト"
+                    },
+                    detailed_analysis: {
+                      type: "string",
+                      description: "文章全体の詳細解説（500文字以内）"
+                    }
+                  },
+                  required: ["summary", "explicit_points", "inferred_actions", "detailed_analysis"]
+                }
               },
             }),
           }
@@ -265,41 +311,22 @@ export async function POST(req: NextRequest) {
     const textOut = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 
     try {
-      // マークダウンのコードブロックを削除
-      let cleanedJson = textOut.trim();
-      if (cleanedJson.startsWith("```json")) {
-        cleanedJson = cleanedJson.replace(/^```json\s*\n?/, "").replace(/\n?```\s*$/, "");
-      } else if (cleanedJson.startsWith("```")) {
-        cleanedJson = cleanedJson.replace(/^```\s*\n?/, "").replace(/\n?```\s*$/, "");
-      }
-
-      // 不完全なJSONを修復（閉じ括弧が欠けている場合）
-      let jsonToTry = cleanedJson;
-      if (!cleanedJson.trim().endsWith("}")) {
-        // 文字列リテラルが閉じられていない場合は閉じる
-        if (cleanedJson.match(/"\s*$/)) {
-          jsonToTry = cleanedJson;
-        } else if (!cleanedJson.includes('"detailed_analysis"')) {
-          // detailed_analysisが途中で切れている場合
-          jsonToTry = cleanedJson + '"}';
-        } else {
-          jsonToTry = cleanedJson + '"}';
-        }
-      }
-
-      const parsed = JSON.parse(jsonToTry);
+      // responseSchemaを指定しているので、レスポンスは必ずJSON形式
+      const parsed = JSON.parse(textOut);
 
       // 結果の検証
       if (
         parsed &&
         typeof parsed.summary === "string" &&
         Array.isArray(parsed.explicit_points) &&
-        Array.isArray(parsed.inferred_actions)
+        Array.isArray(parsed.inferred_actions) &&
+        typeof parsed.detailed_analysis === "string"
       ) {
-        console.log("✅ Gemini解析成功");
+        console.log("✅ Gemini 2.5 Pro解析成功");
         return NextResponse.json(parsed);
       } else {
         console.error("Invalid response structure from Gemini");
+        console.error("Response:", parsed);
         return NextResponse.json(fallbackData());
       }
     } catch (parseError) {
