@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Loader2, Mic, MicOff, Square, Monitor, Settings, History, Copy, Check } from "lucide-react";
+import { Loader2, Mic, MicOff, Square, Monitor, Settings, History, Copy, Check, MessageSquare } from "lucide-react";
 import BackToHome from "../../components/BackToHome";
 
 type MeetingSummary = {
