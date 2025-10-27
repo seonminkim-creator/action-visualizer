@@ -366,21 +366,31 @@ export default function MeetingRecorder() {
           <BackToHome />
         </div>
 
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 24 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 12,
+                background: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "white",
+                flexShrink: 0,
+              }}
+            >
+              <MessageSquare size={24} />
+            </div>
             <h1
               style={{
                 fontSize: "clamp(18px, 4vw, 24px)",
                 fontWeight: 600,
                 margin: 0,
-                background: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
-                color: "white",
-                padding: "8px 16px",
-                borderRadius: 8,
-                display: "inline-block",
               }}
             >
-              会議まとめくん 📝
+              会議まとめくん
             </h1>
             <button
               onClick={() => setShowSettings(!showSettings)}
@@ -421,9 +431,9 @@ export default function MeetingRecorder() {
               履歴 {history.length > 0 && `(${history.length})`}
             </button>
           </div>
-          <p style={{ color: "#64748b", fontSize: 14, margin: 0 }}>
+          <p style={{ color: "#64748b", fontSize: 14, margin: 0, paddingLeft: 60 }}>
             {loading
-              ? "議事録を作成中..."
+              ? "議事録を作成中...（最大60秒程度かかる場合があります）"
               : "会議の内容から議事録とTODOを自動生成"}
           </p>
         </div>

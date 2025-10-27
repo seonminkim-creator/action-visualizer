@@ -334,7 +334,7 @@ export default function CalendarFinder() {
               display: "inline-block",
               width: "fit-content"
             }}>
-              空き時間みえーるくん 📅
+              空き時間検索くん 📅
             </h1>
             {isAuthenticated && (
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

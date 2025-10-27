@@ -211,21 +211,31 @@ export default function EmailComposer() {
           <BackToHome />
         </div>
 
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 24 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 12,
+                background: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "white",
+                flexShrink: 0,
+              }}
+            >
+              <Mail size={24} />
+            </div>
             <h1
               style={{
                 fontSize: "clamp(18px, 4vw, 24px)",
                 fontWeight: 600,
                 margin: 0,
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                color: "white",
-                padding: "8px 16px",
-                borderRadius: 8,
-                display: "inline-block",
               }}
             >
-              メール返信叩きくん ✉️
+              メール返信叩きくん
             </h1>
             {styleProfile && (
               <span
@@ -246,7 +256,7 @@ export default function EmailComposer() {
               </span>
             )}
           </div>
-          <p style={{ color: "#64748b", fontSize: 14, marginTop: 8, marginBottom: 0 }}>
+          <p style={{ color: "#64748b", fontSize: 14, margin: 0, paddingLeft: 60 }}>
             {loading
               ? "メール文を生成中...（最大60秒程度かかる場合があります）"
               : "ビジネスメールの作成・返信・添削をお手伝いします"}
