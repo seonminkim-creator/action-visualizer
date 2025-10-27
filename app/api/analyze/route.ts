@@ -207,7 +207,7 @@ export async function POST(req: NextRequest) {
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         resp = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
           {
             method: "POST",
             headers: {
