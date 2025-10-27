@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "deploy": "firebase deploy --only hosting"
   },
   "dependencies": {
     "googleapis": "^164.1.0",
