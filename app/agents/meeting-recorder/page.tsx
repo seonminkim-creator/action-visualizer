@@ -88,7 +88,7 @@ export default function MeetingRecorder() {
 
         // 映像トラックを削除
         const videoTracks = systemStream.getVideoTracks();
-        videoTracks.forEach(track => track.stop());
+        videoTracks.forEach((track: MediaStreamTrack) => track.stop());
 
         // AudioContextで2つの音声をミックス
         const audioContext = new AudioContext();
