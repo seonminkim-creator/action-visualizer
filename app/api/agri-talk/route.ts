@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export const runtime = "edge";
+// Node.js Runtimeに変更（最大300秒実行可能）
+export const runtime = "nodejs";
+export const maxDuration = 60; // Vercel Pro: 最大60秒
 
 type AgriTalkInput = {
   region: string;
