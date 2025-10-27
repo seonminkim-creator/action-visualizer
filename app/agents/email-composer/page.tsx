@@ -13,6 +13,8 @@ export default function EmailComposer() {
   const [additionalInfo, setAdditionalInfo] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const [processingTime, setProcessingTime] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
 
@@ -38,6 +40,8 @@ export default function EmailComposer() {
 
     setLoading(true);
     setError(null);
+    setErrorDetails(null);
+    setProcessingTime(null);
     setResult(null);
 
     try {
@@ -54,21 +58,35 @@ export default function EmailComposer() {
 
       if (!res.ok) {
         let errorMessage = "メール生成に失敗しました";
+        let details = "";
+        let timeInfo = "";
         try {
           const errorData = await res.json();
           if (errorData.error) {
-            errorMessage = `エラー: ${errorData.error}`;
+            errorMessage = errorData.error;
+          }
+          if (errorData.details) {
+            details = errorData.details;
+          }
+          if (errorData.processingTime) {
+            timeInfo = errorData.processingTime;
           }
         } catch {
           errorMessage = `メール生成に失敗 (${res.status}): ${res.statusText}`;
         }
-        throw new Error(errorMessage);
+
+        setError(errorMessage);
+        setErrorDetails(details);
+        setProcessingTime(timeInfo);
+        return;
       }
 
       const data = await res.json();
 
       if (!data.email || data.email.trim() === "") {
-        throw new Error("メール生成結果が空です");
+        setError("メール生成結果が空です");
+        setErrorDetails("もう一度お試しください。");
+        return;
       }
 
       setResult(data.email);
@@ -79,6 +97,7 @@ export default function EmailComposer() {
           ? err.message
           : "予期しないエラーが発生しました"
       );
+      setErrorDetails("ネットワーク接続を確認してください。");
     } finally {
       setLoading(false);
     }
@@ -163,6 +182,8 @@ export default function EmailComposer() {
     setAdditionalInfo("");
     setResult(null);
     setError(null);
+    setErrorDetails(null);
+    setProcessingTime(null);
   }
 
   const taskTypeLabels = {
@@ -227,7 +248,7 @@ export default function EmailComposer() {
           </div>
           <p style={{ color: "#64748b", fontSize: 14, marginTop: 8, marginBottom: 0 }}>
             {loading
-              ? "メール文を生成中..."
+              ? "メール文を生成中...（最大60秒程度かかる場合があります）"
               : "ビジネスメールの作成・返信・添削をお手伝いします"}
           </p>
         </div>
@@ -464,14 +485,24 @@ export default function EmailComposer() {
                 style={{
                   color: "#dc2626",
                   fontSize: 14,
-                  padding: 12,
+                  padding: 16,
                   background: "#fee2e2",
                   borderRadius: 8,
                   marginBottom: 16,
                   border: "1px solid #fecaca",
                 }}
               >
-                {error}
+                <div style={{ fontWeight: 600, marginBottom: 8 }}>{error}</div>
+                {errorDetails && (
+                  <div style={{ fontSize: 13, color: "#991b1b", marginBottom: 6 }}>
+                    {errorDetails}
+                  </div>
+                )}
+                {processingTime && (
+                  <div style={{ fontSize: 12, color: "#7f1d1d", marginTop: 8 }}>
+                    処理時間: {processingTime}
+                  </div>
+                )}
               </div>
             )}
 

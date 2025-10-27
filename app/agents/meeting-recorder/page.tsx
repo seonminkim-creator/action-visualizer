@@ -22,6 +22,8 @@ export default function MeetingRecorder() {
   const [transcript, setTranscript] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const [processingTime, setProcessingTime] = useState<string | null>(null);
   const [result, setResult] = useState<MeetingSummary | null>(null);
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
@@ -283,6 +285,8 @@ export default function MeetingRecorder() {
 
     setLoading(true);
     setError(null);
+    setErrorDetails(null);
+    setProcessingTime(null);
     setResult(null);
 
     try {
@@ -295,22 +299,36 @@ export default function MeetingRecorder() {
       if (!res.ok) {
         // APIからの詳細エラーメッセージを取得
         let errorMessage = "議事録の生成に失敗しました";
+        let details = "";
+        let timeInfo = "";
         try {
           const errorData = await res.json();
           if (errorData.error) {
-            errorMessage = `議事録の生成に失敗: ${errorData.error}`;
+            errorMessage = errorData.error;
+          }
+          if (errorData.details) {
+            details = errorData.details;
+          }
+          if (errorData.processingTime) {
+            timeInfo = errorData.processingTime;
           }
         } catch {
           errorMessage = `議事録の生成に失敗 (${res.status}): ${res.statusText}`;
         }
-        throw new Error(errorMessage);
+
+        setError(errorMessage);
+        setErrorDetails(details);
+        setProcessingTime(timeInfo);
+        return;
       }
 
       const data = await res.json();
 
       // データ検証
       if (!data || !data.summary || !data.todos || !data.detailedMinutes) {
-        throw new Error("議事録データが不完全です。もう一度お試しください。");
+        setError("議事録データが不完全です。");
+        setErrorDetails("もう一度お試しください。");
+        return;
       }
 
       setResult(data);
@@ -329,6 +347,7 @@ export default function MeetingRecorder() {
           ? err.message
           : "予期しないエラーが発生しました。しばらくしてから再度お試しください。"
       );
+      setErrorDetails("ネットワーク接続を確認してください。");
     } finally {
       setLoading(false);
     }
@@ -810,14 +829,24 @@ export default function MeetingRecorder() {
             style={{
               color: "#dc2626",
               fontSize: 14,
-              padding: 12,
+              padding: 16,
               background: "#fee2e2",
               borderRadius: 8,
               marginBottom: 16,
               border: "1px solid #fecaca",
             }}
           >
-            {error}
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>{error}</div>
+            {errorDetails && (
+              <div style={{ fontSize: 13, color: "#991b1b", marginBottom: 6 }}>
+                {errorDetails}
+              </div>
+            )}
+            {processingTime && (
+              <div style={{ fontSize: 12, color: "#7f1d1d", marginTop: 8 }}>
+                処理時間: {processingTime}
+              </div>
+            )}
           </div>
         )}
 

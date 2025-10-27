@@ -186,6 +186,8 @@ ${searchResultText}
 }
 
 export async function POST(req: NextRequest) {
+  const startTime = Date.now();
+
   try {
     const { region, crop } = (await req.json()) as AgriTalkInput;
 
@@ -224,6 +226,7 @@ export async function POST(req: NextRequest) {
 
     // 各クエリで検索を実行
     const searchResults: Record<string, string[]> = {};
+    const searchStartTime = Date.now();
 
     for (const query of queries) {
       const results = await searchGoogle(query, googleSearchApiKey, searchEngineId);
@@ -232,22 +235,46 @@ export async function POST(req: NextRequest) {
       await new Promise(resolve => setTimeout(resolve, 200));
     }
 
-    console.log("📊 検索結果取得完了");
+    const searchDuration = ((Date.now() - searchStartTime) / 1000).toFixed(1);
+    console.log(`📊 検索結果取得完了（${searchDuration}秒）`);
 
     // Geminiで分析・整理
+    const geminiStartTime = Date.now();
     const content = await analyzeWithGemini(region, crop, searchResults, geminiApiKey);
+    const geminiDuration = ((Date.now() - geminiStartTime) / 1000).toFixed(1);
 
-    console.log("✅ Gemini分析完了");
+    const totalDuration = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(`✅ Gemini分析完了（${geminiDuration}秒） | 合計処理時間: ${totalDuration}秒`);
 
     return NextResponse.json({ content });
   } catch (error) {
-    console.error("API route error:", error);
+    const totalDuration = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.error(`API route error (処理時間: ${totalDuration}秒):`, error);
+
+    // より詳細なエラーメッセージを提供
+    let errorMessage = "エラーが発生しました。";
+    let errorDetails = "";
+
+    if (error instanceof Error) {
+      if (error.message.includes("Gemini API error")) {
+        errorMessage = "AI分析サービスとの通信でエラーが発生しました。";
+        errorDetails = "Gemini APIからの応答に問題がありました。サーバーが混雑している可能性があります。";
+      } else if (error.message.includes("timeout") || error.message.includes("ETIMEDOUT")) {
+        errorMessage = "処理がタイムアウトしました。";
+        errorDetails = `処理に${totalDuration}秒かかりました。この機能は複数の検索とAI分析を行うため、最大60秒程度かかる場合があります。もう一度お試しください。`;
+      } else if (error.message.includes("fetch")) {
+        errorMessage = "外部APIとの通信エラーが発生しました。";
+        errorDetails = "Google検索APIまたはGemini AIとの通信に失敗しました。ネットワーク接続を確認してください。";
+      } else {
+        errorMessage = error.message;
+      }
+    }
+
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "エラーが発生しました。しばらくしてから再度お試しください。",
+        error: errorMessage,
+        details: errorDetails || "しばらく時間をおいてから再度お試しください。",
+        processingTime: `${totalDuration}秒`,
       },
       { status: 500 }
     );

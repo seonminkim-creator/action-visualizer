@@ -14,6 +14,8 @@ export default function AgriTalkAssistant() {
   const [crop, setCrop] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const [processingTime, setProcessingTime] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
 
   async function searchTopics(): Promise<void> {
@@ -24,6 +26,8 @@ export default function AgriTalkAssistant() {
 
     setLoading(true);
     setError(null);
+    setErrorDetails(null);
+    setProcessingTime(null);
     setResult(null);
 
     try {
@@ -37,25 +41,39 @@ export default function AgriTalkAssistant() {
       });
 
       if (!res.ok) {
-        // APIからのエラーメッセージを取得
+        // APIからの詳細なエラーメッセージを取得
         let errorMessage = "情報の取得に失敗しました";
+        let details = "";
+        let timeInfo = "";
         try {
           const errorData = await res.json();
           if (errorData.error) {
             errorMessage = errorData.error;
           }
+          if (errorData.details) {
+            details = errorData.details;
+          }
+          if (errorData.processingTime) {
+            timeInfo = errorData.processingTime;
+          }
         } catch {
           // JSONのパースに失敗した場合はステータステキストを使用
           errorMessage = `エラー (${res.status}): ${res.statusText}`;
         }
-        throw new Error(errorMessage);
+
+        setError(errorMessage);
+        setErrorDetails(details);
+        setProcessingTime(timeInfo);
+        return;
       }
 
       const data = await res.json();
 
       // データが空の場合の処理
       if (!data.content || data.content.trim() === "") {
-        throw new Error("情報の取得に成功しましたが、データが空でした。条件を変えて再度お試しください。");
+        setError("情報の取得に成功しましたが、データが空でした。");
+        setErrorDetails("条件を変えて再度お試しください。");
+        return;
       }
 
       setResult(data.content);
@@ -66,6 +84,7 @@ export default function AgriTalkAssistant() {
           ? err.message
           : "予期しないエラーが発生しました。しばらくしてから再度お試しください。"
       );
+      setErrorDetails("ネットワーク接続を確認してください。");
     } finally {
       setLoading(false);
     }
@@ -188,7 +207,7 @@ export default function AgriTalkAssistant() {
           </div>
           <p style={{ color: "#64748b", fontSize: 14, margin: 0, paddingLeft: 60 }}>
             {loading
-              ? "🔍 直近3週間の旬な話題を検索中..."
+              ? "🔍 直近3週間の旬な話題を検索中...（最大60秒程度かかる場合があります）"
               : "農家さんとの会話のきっかけになる旬な話題を提供"}
           </p>
         </div>
@@ -329,6 +348,8 @@ export default function AgriTalkAssistant() {
                   setCrop("");
                   setResult(null);
                   setError(null);
+                  setErrorDetails(null);
+                  setProcessingTime(null);
                 }}
                 disabled={loading}
                 style={{
@@ -352,14 +373,24 @@ export default function AgriTalkAssistant() {
             style={{
               color: "#dc2626",
               fontSize: 14,
-              padding: 12,
+              padding: 16,
               background: "#fee2e2",
               borderRadius: 8,
               marginBottom: 16,
               border: "1px solid #fecaca",
             }}
           >
-            {error}
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>{error}</div>
+            {errorDetails && (
+              <div style={{ fontSize: 13, color: "#991b1b", marginBottom: 6 }}>
+                {errorDetails}
+              </div>
+            )}
+            {processingTime && (
+              <div style={{ fontSize: 12, color: "#7f1d1d", marginTop: 8 }}>
+                処理時間: {processingTime}
+              </div>
+            )}
           </div>
         )}
 

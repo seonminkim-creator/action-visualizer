@@ -5,6 +5,8 @@ export const runtime = "edge";
 type TaskType = "reply" | "compose" | "revise";
 
 export async function POST(req: NextRequest) {
+  const startTime = Date.now();
+
   try {
     const { taskType, inputText, additionalInfo, styleProfile } = await req.json();
 
@@ -135,7 +137,8 @@ ${additionalInfo ? `【添削指示】\n${additionalInfo}\n` : ""}
 
         if (response.ok) {
           const data = await response.json();
-          console.log(`✅ Gemini API成功（試行${attempt}回目）`);
+          const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+          console.log(`✅ Gemini API成功（試行${attempt}回目、処理時間: ${duration}秒）`);
 
           const textOut =
             data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
@@ -186,15 +189,55 @@ ${additionalInfo ? `【添削指示】\n${additionalInfo}\n` : ""}
     }
 
     // すべてのリトライが失敗した場合
-    console.error(`❌ メール生成に失敗しました（${maxRetries}回試行）:`, lastError);
+    const totalDuration = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.error(`❌ メール生成に失敗しました（${maxRetries}回試行、処理時間: ${totalDuration}秒）:`, lastError);
+
+    let errorMessage = "メール生成に失敗しました。";
+    let errorDetails = "";
+
+    if (typeof lastError === "string") {
+      if (lastError.includes("503")) {
+        errorMessage = "AI分析サービスが一時的に混雑しています。";
+        errorDetails = `処理に${totalDuration}秒かかりましたが、Gemini APIサーバーが過負荷状態です。1〜2分後に再度お試しください。`;
+      } else if (lastError.includes("timeout") || lastError.includes("ETIMEDOUT")) {
+        errorMessage = "処理がタイムアウトしました。";
+        errorDetails = `処理に${totalDuration}秒かかりました。メール生成には最大60秒程度かかる場合があります。もう一度お試しください。`;
+      } else if (lastError.includes("fetch")) {
+        errorMessage = "外部APIとの通信エラーが発生しました。";
+        errorDetails = "Gemini AIとの通信に失敗しました。ネットワーク接続を確認してください。";
+      }
+    }
+
     return NextResponse.json(
-      { error: "メール生成に失敗しました。もう一度お試しください。" },
+      {
+        error: errorMessage,
+        details: errorDetails || "しばらく時間をおいてから再度お試しください。",
+        processingTime: `${totalDuration}秒`,
+      },
       { status: 500 }
     );
   } catch (error) {
-    console.error("❌ 予期しないエラー:", error);
+    const totalDuration = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.error(`❌ 予期しないエラー (処理時間: ${totalDuration}秒):`, error);
+
+    let errorMessage = "サーバーエラーが発生しました";
+    let errorDetails = "";
+
+    if (error instanceof Error) {
+      if (error.message.includes("timeout") || error.message.includes("ETIMEDOUT")) {
+        errorMessage = "処理がタイムアウトしました。";
+        errorDetails = `処理に${totalDuration}秒かかりました。メール生成には最大60秒程度かかる場合があります。もう一度お試しください。`;
+      } else {
+        errorDetails = error.message;
+      }
+    }
+
     return NextResponse.json(
-      { error: "サーバーエラーが発生しました" },
+      {
+        error: errorMessage,
+        details: errorDetails || "予期しないエラーが発生しました。",
+        processingTime: `${totalDuration}秒`,
+      },
       { status: 500 }
     );
   }

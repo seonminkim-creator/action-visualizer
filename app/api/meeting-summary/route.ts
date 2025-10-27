@@ -18,6 +18,8 @@ type MeetingSummary = {
 };
 
 export async function POST(req: NextRequest) {
+  const startTime = Date.now();
+
   try {
     const { transcript } = (await req.json()) as { transcript?: string };
 
@@ -169,7 +171,8 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
 
           try {
             const parsed = JSON.parse(textOut) as MeetingSummary;
-            console.log(`✅ Gemini API成功（試行${attempt}回目）`);
+            const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+            console.log(`✅ Gemini API成功（試行${attempt}回目、処理時間: ${duration}秒）`);
             return NextResponse.json(parsed);
           } catch (parseError) {
             console.error("JSON parse error:", parseError);
@@ -200,14 +203,60 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
       }
     }
 
+    const totalDuration = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.error(`❌ 議事録生成に失敗しました（${maxRetries}回試行、処理時間: ${totalDuration}秒）:`, lastError);
+
+    let errorMessage = "議事録の生成に失敗しました。";
+    let errorDetails = "";
+
+    if (typeof lastError === "string") {
+      if (lastError.includes("503")) {
+        errorMessage = "AI分析サービスが一時的に混雑しています。";
+        errorDetails = `処理に${totalDuration}秒かかりましたが、Gemini APIサーバーが過負荷状態です。1〜2分後に再度お試しください。`;
+      } else if (lastError.includes("timeout") || lastError.includes("ETIMEDOUT")) {
+        errorMessage = "処理がタイムアウトしました。";
+        errorDetails = `処理に${totalDuration}秒かかりました。議事録生成には最大60秒程度かかる場合があります。もう一度お試しください。`;
+      } else if (lastError.includes("JSON")) {
+        errorMessage = "AIからの応答形式が正しくありませんでした。";
+        errorDetails = "議事録の構造化に失敗しました。もう一度お試しください。";
+      } else if (lastError.includes("fetch")) {
+        errorMessage = "外部APIとの通信エラーが発生しました。";
+        errorDetails = "Gemini AIとの通信に失敗しました。ネットワーク接続を確認してください。";
+      } else {
+        errorDetails = lastError;
+      }
+    }
+
     return NextResponse.json(
-      { error: lastError || "議事録の生成に失敗しました" },
+      {
+        error: errorMessage,
+        details: errorDetails || "しばらく時間をおいてから再度お試しください。",
+        processingTime: `${totalDuration}秒`,
+      },
       { status: 500 }
     );
   } catch (e) {
-    console.error("API route error:", e);
+    const totalDuration = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.error(`API route error (処理時間: ${totalDuration}秒):`, e);
+
+    let errorMessage = "エラーが発生しました";
+    let errorDetails = "";
+
+    if (e instanceof Error) {
+      if (e.message.includes("timeout") || e.message.includes("ETIMEDOUT")) {
+        errorMessage = "処理がタイムアウトしました。";
+        errorDetails = `処理に${totalDuration}秒かかりました。議事録生成には最大60秒程度かかる場合があります。もう一度お試しください。`;
+      } else {
+        errorDetails = e.message;
+      }
+    }
+
     return NextResponse.json(
-      { error: "エラーが発生しました" },
+      {
+        error: errorMessage,
+        details: errorDetails || "予期しないエラーが発生しました。",
+        processingTime: `${totalDuration}秒`,
+      },
       { status: 500 }
     );
   }
