@@ -225,7 +225,8 @@ export async function POST(req: NextRequest) {
               ],
               generationConfig: {
                 temperature: 0.2,
-                maxOutputTokens: 800,
+                maxOutputTokens: 2048,
+                responseMimeType: "application/json",
               },
             }),
           }
@@ -271,9 +272,23 @@ export async function POST(req: NextRequest) {
       } else if (cleanedJson.startsWith("```")) {
         cleanedJson = cleanedJson.replace(/^```\s*\n?/, "").replace(/\n?```\s*$/, "");
       }
-      
-      const parsed = JSON.parse(cleanedJson);
-      
+
+      // 不完全なJSONを修復（閉じ括弧が欠けている場合）
+      let jsonToTry = cleanedJson;
+      if (!cleanedJson.trim().endsWith("}")) {
+        // 文字列リテラルが閉じられていない場合は閉じる
+        if (cleanedJson.match(/"\s*$/)) {
+          jsonToTry = cleanedJson;
+        } else if (!cleanedJson.includes('"detailed_analysis"')) {
+          // detailed_analysisが途中で切れている場合
+          jsonToTry = cleanedJson + '"}';
+        } else {
+          jsonToTry = cleanedJson + '"}';
+        }
+      }
+
+      const parsed = JSON.parse(jsonToTry);
+
       // 結果の検証
       if (
         parsed &&
