@@ -118,9 +118,9 @@ ${searchResultText}
 
 上記の検索結果をもとに、農家さんとの会話のきっかけになる旬な話題を整理してください。`;
 
-  // エクスポネンシャルバックオフ付きリトライロジック
+  // エクスポネンシャルバックオフ付きリトライロジック（最適化版）
   let lastError = null;
-  const maxRetries = 7; // リトライ回数を増やす
+  const maxRetries = 3; // リトライ回数を削減（1, 2, 3回目）
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -145,9 +145,10 @@ ${searchResultText}
               temperature: 0.7,
               topP: 0.95,
               topK: 40,
-              maxOutputTokens: 8192,
+              maxOutputTokens: 4096, // トークン数を削減
             },
           }),
+          signal: AbortSignal.timeout(30000), // 30秒タイムアウト
         }
       );
 
@@ -160,8 +161,8 @@ ${searchResultText}
 
       // 503エラーの場合はエクスポネンシャルバックオフでリトライ
       if (response.status === 503 && attempt < maxRetries) {
-        // エクスポネンシャルバックオフ: 2秒 → 4秒 → 8秒 → 16秒 → 32秒 → 64秒
-        const backoffSeconds = Math.pow(2, attempt);
+        // 短縮版バックオフ: 1秒 → 2秒
+        const backoffSeconds = attempt;
         console.log(`⏳ Gemini APIリトライ ${attempt}/${maxRetries} (503エラー、${backoffSeconds}秒後に再試行)`);
         await new Promise(resolve => setTimeout(resolve, backoffSeconds * 1000));
         continue;
@@ -175,7 +176,7 @@ ${searchResultText}
       lastError = String(e);
       console.error(`Gemini API呼び出しエラー（試行${attempt}回目）:`, e);
       if (attempt < maxRetries) {
-        const backoffSeconds = Math.pow(2, attempt);
+        const backoffSeconds = attempt; // 短縮版: 1秒 → 2秒
         console.log(`⏳ リトライ ${attempt}/${maxRetries} (${backoffSeconds}秒後に再試行)`);
         await new Promise(resolve => setTimeout(resolve, backoffSeconds * 1000));
       }
@@ -210,30 +211,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 検索クエリを自動生成
+    // 検索クエリを自動生成（重要なものに絞る）
     const queries = [
-      `${region} 天気 予報`,
-      `${region} 病害虫`,
-      crop ? `${crop} 市況` : `${region} 農産物 市況`,
-      `${region} 補助金 農業`,
-      `${region} 獣害`,
-      `${region} 道路工事`,
-      `${region} イベント`,
-      crop ? `${crop} 価格` : "",
-    ].filter(Boolean);
+      `${region} 天気 予報 病害虫`, // 天気と病害虫を統合
+      crop ? `${crop} 市況 価格` : `${region} 農産物 市況`, // 市況と価格を統合
+      `${region} 補助金 農業 政策`, // 補助金と政策を統合
+      `${region} 獣害 安全`, // 獣害と安全情報を統合
+      `${region} イベント 話題`, // イベントと話題を統合
+    ];
 
     console.log("🔍 検索クエリ:", queries);
 
-    // 各クエリで検索を実行
-    const searchResults: Record<string, string[]> = {};
+    // 並列検索で高速化（待機時間なし）
     const searchStartTime = Date.now();
+    const searchPromises = queries.map(query =>
+      searchGoogle(query, googleSearchApiKey, searchEngineId)
+        .then(results => ({ query, results }))
+    );
 
-    for (const query of queries) {
-      const results = await searchGoogle(query, googleSearchApiKey, searchEngineId);
+    const searchResultsArray = await Promise.all(searchPromises);
+    const searchResults: Record<string, string[]> = {};
+    searchResultsArray.forEach(({ query, results }) => {
       searchResults[query] = results;
-      // API制限対策：少し待機
-      await new Promise(resolve => setTimeout(resolve, 200));
-    }
+    });
 
     const searchDuration = ((Date.now() - searchStartTime) / 1000).toFixed(1);
     console.log(`📊 検索結果取得完了（${searchDuration}秒）`);

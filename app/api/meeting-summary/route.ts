@@ -81,7 +81,7 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
     console.log("🤖 Gemini APIで議事録を作成中...");
 
     let lastError = null;
-    const maxRetries = 7; // エクスポネンシャルバックオフ対応
+    const maxRetries = 3; // リトライ回数を削減
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -106,7 +106,7 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
                 temperature: 0.3,
                 topP: 0.95,
                 topK: 40,
-                maxOutputTokens: 8192,
+                maxOutputTokens: 4096, // トークン数を削減
                 responseMimeType: "application/json",
                 responseSchema: {
                   type: "object",
@@ -162,6 +162,7 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
                 }
               },
             }),
+            signal: AbortSignal.timeout(30000), // 30秒タイムアウト
           }
         );
 
@@ -182,8 +183,8 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
         }
 
         if (response.status === 503 && attempt < maxRetries) {
-          // エクスポネンシャルバックオフ: 2秒 → 4秒 → 8秒 → 16秒 → 32秒 → 64秒
-          const backoffSeconds = Math.pow(2, attempt);
+          // 短縮版バックオフ: 1秒 → 2秒
+          const backoffSeconds = attempt;
           console.log(`⏳ Gemini APIリトライ ${attempt}/${maxRetries} (503エラー、${backoffSeconds}秒後に再試行)`);
           await new Promise(resolve => setTimeout(resolve, backoffSeconds * 1000));
           continue;
@@ -196,7 +197,7 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
         lastError = String(e);
         console.error(`Gemini API呼び出しエラー（試行${attempt}回目）:`, e);
         if (attempt < maxRetries) {
-          const backoffSeconds = Math.pow(2, attempt);
+          const backoffSeconds = attempt; // 短縮版: 1秒 → 2秒
           console.log(`⏳ リトライ ${attempt}/${maxRetries} (${backoffSeconds}秒後に再試行)`);
           await new Promise(resolve => setTimeout(resolve, backoffSeconds * 1000));
         }
