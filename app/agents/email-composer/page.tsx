@@ -382,25 +382,6 @@ export default function EmailComposer() {
         {/* メール作成タブ */}
         {activeTab === "composer" && (
           <>
-            {!result && !loading && (
-              <div
-                style={{
-                  background: "var(--card-bg)",
-                  borderRadius: 8,
-                  padding: "12px 16px",
-                  marginBottom: 16,
-                  border: "1px solid var(--card-border)",
-                }}
-              >
-                <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.7 }}>
-                  <div style={{ marginBottom: 6 }}>
-                    <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>📋 使い方</span>
-                    　タスクを選択して、メール内容や要件を入力してください
-                  </div>
-                </div>
-              </div>
-            )}
-
             <div
               style={{
                 background: "var(--card-bg)",
