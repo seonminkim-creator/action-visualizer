@@ -26,12 +26,21 @@ export default function EmailComposer() {
   const [learningLoading, setLearningLoading] = useState<boolean>(false);
   const [learningError, setLearningError] = useState<string | null>(null);
 
-  // localStorage から文体プロファイルを読み込み
+  // ユーザー設定
+  const [userName, setUserName] = useState<string>("");
+  const [companyName, setCompanyName] = useState<string>("");
+
+  // localStorage から文体プロファイルとユーザー設定を読み込み
   useEffect(() => {
     const savedProfile = localStorage.getItem("emailStyleProfile");
     if (savedProfile) {
       setStyleProfile(savedProfile);
     }
+
+    const savedUserName = localStorage.getItem("emailUserName");
+    const savedCompanyName = localStorage.getItem("emailCompanyName");
+    if (savedUserName) setUserName(savedUserName);
+    if (savedCompanyName) setCompanyName(savedCompanyName);
   }, []);
 
   // カレンダー認証状態を確認
@@ -114,6 +123,8 @@ export default function EmailComposer() {
           additionalInfo: additionalInfo.trim(),
           styleProfile: styleProfile || undefined, // 学習した文体を送信
           availability: availabilityText, // 空き時間情報を追加
+          userName: userName.trim() || undefined, // ユーザー名
+          companyName: companyName.trim() || undefined, // 会社名
         }),
       });
 
@@ -225,6 +236,16 @@ export default function EmailComposer() {
       setStyleProfile(null);
       alert("✅ 文体がリセットされました");
     }
+  }
+
+  function saveUserSettings(): void {
+    if (!userName.trim() || !companyName.trim()) {
+      alert("名前と会社名の両方を入力してください");
+      return;
+    }
+    localStorage.setItem("emailUserName", userName.trim());
+    localStorage.setItem("emailCompanyName", companyName.trim());
+    alert("✅ ユーザー設定を保存しました");
   }
 
   async function copyToClipboard(): Promise<void> {
@@ -700,33 +721,136 @@ export default function EmailComposer() {
 
         {/* 文体学習タブ */}
         {activeTab === "settings" && (
-          <div
-            style={{
-              background: "white",
-              borderRadius: 12,
-              padding: 20,
-              boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-            }}
-          >
-            <h2
+          <>
+            {/* ユーザー設定セクション */}
+            <div
               style={{
-                fontSize: 18,
-                fontWeight: 600,
-                color: "#0f172a",
-                marginBottom: 8,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
+                background: "white",
+                borderRadius: 12,
+                padding: 20,
+                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                marginBottom: 16,
               }}
             >
-              <Brain style={{ width: 20, height: 20 }} />
-              あなたの文体を学習
-            </h2>
-            <p style={{ fontSize: 14, color: "#64748b", marginBottom: 16, lineHeight: 1.6 }}>
-              あなたが実際に書いたメール文を1〜3件貼り付けてください。
-              <br />
-              AIがあなたの文体・トーン・表現パターンを分析し、今後のメール生成に反映します。
-            </p>
+              <h2
+                style={{
+                  fontSize: 18,
+                  fontWeight: 600,
+                  color: "#0f172a",
+                  marginBottom: 8,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <Settings style={{ width: 20, height: 20 }} />
+                ユーザー設定
+              </h2>
+              <p style={{ fontSize: 14, color: "#64748b", marginBottom: 16, lineHeight: 1.6 }}>
+                メールの挨拶文に使用する、あなたの名前と会社名を設定してください。
+              </p>
+
+              <div style={{ marginBottom: 16 }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#0f172a",
+                    marginBottom: 8,
+                  }}
+                >
+                  会社名 <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  placeholder="例: 株式会社PECO"
+                  style={{
+                    width: "100%",
+                    padding: 12,
+                    borderRadius: 8,
+                    border: "1px solid #d1d5db",
+                    fontSize: 14,
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#0f172a",
+                    marginBottom: 8,
+                  }}
+                >
+                  名前 <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  placeholder="例: 信畑"
+                  style={{
+                    width: "100%",
+                    padding: 12,
+                    borderRadius: 8,
+                    border: "1px solid #d1d5db",
+                    fontSize: 14,
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              <button
+                onClick={saveUserSettings}
+                style={{
+                  padding: "10px 20px",
+                  borderRadius: 8,
+                  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  color: "white",
+                  border: "none",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  fontSize: 14,
+                }}
+              >
+                保存
+              </button>
+            </div>
+
+            {/* 文体学習セクション */}
+            <div
+              style={{
+                background: "white",
+                borderRadius: 12,
+                padding: 20,
+                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+              }}
+            >
+              <h2
+                style={{
+                  fontSize: 18,
+                  fontWeight: 600,
+                  color: "#0f172a",
+                  marginBottom: 8,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <Brain style={{ width: 20, height: 20 }} />
+                あなたの文体を学習
+              </h2>
+              <p style={{ fontSize: 14, color: "#64748b", marginBottom: 16, lineHeight: 1.6 }}>
+                あなたが実際に書いたメール文を1〜3件貼り付けてください。
+                <br />
+                AIがあなたの文体・トーン・表現パターンを分析し、今後のメール生成に反映します。
+              </p>
 
             {/* サンプルメール入力欄 */}
             {sampleEmails.map((email, index) => (
@@ -880,6 +1004,7 @@ export default function EmailComposer() {
               </div>
             )}
           </div>
+          </>
         )}
 
         <p

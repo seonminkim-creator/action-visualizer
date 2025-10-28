@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   const startTime = Date.now();
 
   try {
-    const { taskType, inputText, additionalInfo, styleProfile, availability } = await req.json();
+    const { taskType, inputText, additionalInfo, styleProfile, availability, userName, companyName } = await req.json();
 
     if (!taskType || !inputText) {
       return NextResponse.json(
@@ -27,6 +27,11 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
+
+    // 挨拶文の例を動的に生成
+    const greetingExample = userName && companyName
+      ? `「大変お世話になっております。${companyName}の${userName}です。」`
+      : `「大変お世話になっております。[会社名]の[名前]です。」`;
 
     // システムプロンプト
     const SYSTEM_PROMPT = `あなたは私のビジネスメール作成アシスタントです。
@@ -47,8 +52,12 @@ export async function POST(req: NextRequest) {
 ・「ありがとうございます」「恐縮です」「承知いたしました」など、礼節を保ちながら柔らかい表現を使う
 ・相手との関係を深めるようなトーン
 
+${userName && companyName ? `■送信者情報
+・会社名: ${companyName}
+・名前: ${userName}
+` : ""}
 ■構成ルール
-1.  冒頭であいさつ（例：「大変お世話になっております。株式会社PECOの信畑です。」）
+1.  冒頭であいさつ（例：${greetingExample}）
 2.  相手のメール内容への感謝・共感を一文添える
 3.  本題（要件）を簡潔に明確に伝える
 4.  最後に、今後の流れやお願い・お礼・フォローの言葉で締める
