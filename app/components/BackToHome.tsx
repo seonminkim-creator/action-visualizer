@@ -12,9 +12,9 @@ export default function BackToHome() {
         gap: 6,
         padding: "8px 14px",
         borderRadius: 8,
-        background: "white",
-        border: "1px solid #e5e7eb",
-        color: "#1e293b",
+        background: "var(--card-bg)",
+        border: "1px solid var(--card-border)",
+        color: "var(--foreground)",
         textDecoration: "none",
         fontSize: 14,
         fontWeight: 500,
@@ -22,12 +22,12 @@ export default function BackToHome() {
         cursor: "pointer"
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = "#cbd5e1";
-        e.currentTarget.style.background = "#f8fafc";
+        e.currentTarget.style.borderColor = "var(--text-secondary)";
+        e.currentTarget.style.background = "var(--background)";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "#e5e7eb";
-        e.currentTarget.style.background = "white";
+        e.currentTarget.style.borderColor = "var(--card-border)";
+        e.currentTarget.style.background = "var(--card-bg)";
       }}
     >
       <ArrowLeft size={16} />

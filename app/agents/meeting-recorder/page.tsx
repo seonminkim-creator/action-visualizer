@@ -415,6 +415,7 @@ export default function MeetingRecorder() {
                 fontSize: "clamp(18px, 4vw, 24px)",
                 fontWeight: 600,
                 margin: 0,
+                color: "var(--foreground)",
               }}
             >
               会議まとめくん
