@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Edge Runtimeを使用（Vercel互換性向上）
+export const runtime = 'nodejs';
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get("code");

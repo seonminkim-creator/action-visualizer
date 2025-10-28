@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Edge Runtimeを使用（Vercel互換性向上）
+export const runtime = 'nodejs';
+
 // Microsoft OAuth 2.0 認証URLを生成
 export async function GET(request: NextRequest) {
   // リクエストから現在のホストを取得
