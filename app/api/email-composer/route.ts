@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   const startTime = Date.now();
 
   try {
-    const { taskType, inputText, additionalInfo, styleProfile } = await req.json();
+    const { taskType, inputText, additionalInfo, styleProfile, availability } = await req.json();
 
     if (!taskType || !inputText) {
       return NextResponse.json(
@@ -81,6 +81,7 @@ ${styleProfile ? `\n■学習済みのユーザーの文体\n以下は、この�
 ${inputText}
 
 ${additionalInfo ? `【返信内容の指示】\n${additionalInfo}\n` : ""}
+${availability ? `\n【あなたの空き時間】\n今後7日間の空き時間: ${availability}\n※ミーティング日程調整が必要な場合は、上記の空き時間から候補日を自然に提案してください。\n` : ""}
 上記の条件に基づいて、適切な返信メール文を本文のみ生成してください。`;
     } else if (taskType === "compose") {
       userPrompt = `以下の要件に基づいて、新規メールを作成してください。
@@ -89,6 +90,7 @@ ${additionalInfo ? `【返信内容の指示】\n${additionalInfo}\n` : ""}
 ${inputText}
 
 ${additionalInfo ? `【補足情報】\n${additionalInfo}\n` : ""}
+${availability ? `\n【あなたの空き時間】\n今後7日間の空き時間: ${availability}\n※ミーティング日程調整が必要な場合は、上記の空き時間から候補日を自然に提案してください。\n` : ""}
 上記の条件に基づいて、適切なメール文を本文のみ生成してください。`;
     } else if (taskType === "revise") {
       userPrompt = `以下のメール文を添削してください。

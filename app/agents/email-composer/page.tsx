@@ -11,6 +11,8 @@ export default function EmailComposer() {
   const [taskType, setTaskType] = useState<TaskType>("reply");
   const [inputText, setInputText] = useState<string>("");
   const [additionalInfo, setAdditionalInfo] = useState<string>("");
+  const [useCalendar, setUseCalendar] = useState<boolean>(false); // カレンダー連携フラグ
+  const [calendarAuthenticated, setCalendarAuthenticated] = useState<boolean>(false); // カレンダー認証状態
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
@@ -32,6 +34,20 @@ export default function EmailComposer() {
     }
   }, []);
 
+  // カレンダー認証状態を確認
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const res = await fetch("/api/calendar/check-auth");
+        const data = await res.json();
+        setCalendarAuthenticated(data.authenticated);
+      } catch (err) {
+        console.error("Calendar auth check failed:", err);
+      }
+    }
+    checkAuth();
+  }, []);
+
   async function generateEmail(): Promise<void> {
     if (!inputText.trim()) {
       setError("メール内容または依頼内容を入力してください");
@@ -45,6 +61,50 @@ export default function EmailComposer() {
     setResult(null);
 
     try {
+      // カレンダー連携が有効な場合、空き時間を取得
+      let availabilityText: string | undefined = undefined;
+      if (useCalendar) {
+        try {
+          // 今日から7日間の空き時間を取得
+          const today = new Date();
+          const endDate = new Date(today);
+          endDate.setDate(endDate.getDate() + 7);
+
+          const availResponse = await fetch("/api/calendar/availability", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              startDate: today.toISOString().split("T")[0],
+              endDate: endDate.toISOString().split("T")[0],
+              startTime: "09:00",
+              endTime: "18:00",
+              excludeWeekends: true,
+              excludeHolidays: true,
+            }),
+          });
+
+          if (availResponse.ok) {
+            const availData = await availResponse.json();
+            // 空き時間を整形
+            const slots: string[] = [];
+            availData.availability.forEach((day: any) => {
+              if (day.slots && day.slots.length > 0 && !day.isHoliday) {
+                const dateStr = `${day.date}(${day.weekday})`;
+                day.slots.slice(0, 2).forEach((slot: any) => {
+                  slots.push(`${dateStr} ${slot.start}〜${slot.end}`);
+                });
+              }
+            });
+            if (slots.length > 0) {
+              availabilityText = slots.slice(0, 5).join("、");
+            }
+          }
+        } catch (err) {
+          console.error("空き時間取得エラー:", err);
+          // エラーが発生してもメール生成は続行
+        }
+      }
+
       const res = await fetch("/api/email-composer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -53,6 +113,7 @@ export default function EmailComposer() {
           inputText: inputText.trim(),
           additionalInfo: additionalInfo.trim(),
           styleProfile: styleProfile || undefined, // 学習した文体を送信
+          availability: availabilityText, // 空き時間情報を追加
         }),
       });
 
@@ -433,7 +494,50 @@ export default function EmailComposer() {
                 }}
               />
 
-              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              {/* カレンダー連携チェックボックス */}
+              <div style={{ marginTop: 12, marginBottom: 12 }}>
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    cursor: calendarAuthenticated ? "pointer" : "not-allowed",
+                    fontSize: 14,
+                    color: calendarAuthenticated ? "#0f172a" : "#94a3b8",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={useCalendar}
+                    onChange={(e) => setUseCalendar(e.target.checked)}
+                    disabled={!calendarAuthenticated}
+                    style={{ cursor: calendarAuthenticated ? "pointer" : "not-allowed" }}
+                  />
+                  <span>📅 カレンダー連携（空き時間を自動提案）</span>
+                  {!calendarAuthenticated && (
+                    <span style={{ fontSize: 12, color: "#dc2626" }}>
+                      ※ カレンダー認証が必要です
+                    </span>
+                  )}
+                </label>
+                {useCalendar && calendarAuthenticated && (
+                  <div
+                    style={{
+                      marginTop: 6,
+                      padding: "8px 12px",
+                      background: "#f0fdf4",
+                      border: "1px solid #86efac",
+                      borderRadius: 6,
+                      fontSize: 12,
+                      color: "#166534",
+                    }}
+                  >
+                    ✓ 今後7日間の空き時間を自動的にメールに含めます
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: "flex", gap: 8 }}>
                 <button
                   onClick={generateEmail}
                   disabled={loading || !inputText.trim()}
