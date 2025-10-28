@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import BackToHome from "../../components/BackToHome";
-import { Copy } from "lucide-react";
+import { Copy, Calendar } from "lucide-react";
 import { Period, Mode, DaySlots } from "../../types/calendar";
 import { getMockAvailability, periodLabels } from "../../lib/mockData";
 
@@ -344,19 +344,31 @@ export default function CalendarFinder() {
             flexWrap: "wrap",
             gap: 8
           }}>
-            <h1 style={{
-              fontSize: "clamp(14px, 4vw, 24px)",
-              fontWeight: 600,
-              margin: 0,
-              background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-              color: "white",
-              padding: "6px 12px",
-              borderRadius: 6,
-              display: "inline-block",
-              width: "fit-content"
-            }}>
-              空き時間検索くん 📅
-            </h1>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 10,
+                  background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "white",
+                }}
+              >
+                <Calendar size={24} />
+              </div>
+              <h1
+                style={{
+                  fontSize: "clamp(18px, 4vw, 24px)",
+                  fontWeight: 600,
+                  margin: 0,
+                }}
+              >
+                空き時間検索くん
+              </h1>
+            </div>
             {isAuthenticated && (
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <div style={{
@@ -404,7 +416,7 @@ export default function CalendarFinder() {
               </div>
             )}
           </div>
-          <p style={{ color: "#475569", fontSize: 13, margin: 0 }}>
+          <p style={{ color: "#64748b", fontSize: 14, margin: 0, paddingLeft: 60 }}>
             {loading ? "空き時間を取得中です…" : "空き時間をすぐ可視化"}
           </p>
         </div>
