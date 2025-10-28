@@ -399,6 +399,7 @@ export default function EmailComposer() {
               alignItems: "center",
               gap: 6,
               marginBottom: -2,
+              whiteSpace: "nowrap"
             }}
           >
             <Settings style={{ width: 16, height: 16 }} />

@@ -433,6 +433,7 @@ export default function MeetingRecorder() {
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
+                whiteSpace: "nowrap"
               }}
             >
               <Settings style={{ width: 14, height: 14 }} />
@@ -447,6 +448,7 @@ export default function MeetingRecorder() {
                 color: showHistory ? "white" : "#475569",
                 border: "1px solid #e5e7eb",
                 cursor: "pointer",
+                whiteSpace: "nowrap",
                 fontSize: 13,
                 fontWeight: 500,
                 display: "flex",

@@ -114,9 +114,32 @@ export default function Home() {
         .agent-card {
           animation: fadeIn 0.5s ease-out;
         }
+
+        /* モバイル: アイコンのみ表示 */
+        .mobile-user-button {
+          display: flex !important;
+        }
+        .desktop-user-button {
+          display: none !important;
+        }
+
+        /* タブレット: 2列 */
         @media (min-width: 640px) {
           .agents-grid {
             grid-template-columns: repeat(2, 1fr);
+          }
+          .mobile-user-button {
+            display: none !important;
+          }
+          .desktop-user-button {
+            display: flex !important;
+          }
+        }
+
+        /* デスクトップ: 3列 */
+        @media (min-width: 1024px) {
+          .agents-grid {
+            grid-template-columns: repeat(3, 1fr);
           }
         }
       `}</style>
@@ -124,39 +147,75 @@ export default function Home() {
       <div style={{ margin: "0 auto", maxWidth: 1200, paddingTop: "40px" }}>
         {/* ヘッダー */}
         <div style={{ position: "relative", textAlign: "center", marginBottom: 48 }}>
-          {/* 設定ボタン */}
+          {/* 設定ボタン（モバイルではアイコンのみ） */}
           {hasSettings && (
-            <button
-              onClick={() => setShowModal(true)}
-              style={{
-                position: "absolute",
-                top: 0,
-                right: 0,
-                padding: "10px 16px",
-                borderRadius: 8,
-                background: "white",
-                border: "1px solid #e5e7eb",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                fontSize: 14,
-                color: "#475569",
-                fontWeight: 500,
-                transition: "all 0.2s"
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "#667eea";
-                e.currentTarget.style.color = "#667eea";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "#e5e7eb";
-                e.currentTarget.style.color = "#475569";
-              }}
-            >
-              <User size={16} />
-              {userName}
-            </button>
+            <>
+              {/* デスクトップ版: ユーザー名付き */}
+              <button
+                onClick={() => setShowModal(true)}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  padding: "10px 16px",
+                  borderRadius: 8,
+                  background: "white",
+                  border: "1px solid #e5e7eb",
+                  cursor: "pointer",
+                  display: "none",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 14,
+                  color: "#475569",
+                  fontWeight: 500,
+                  transition: "all 0.2s"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "#667eea";
+                  e.currentTarget.style.color = "#667eea";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "#e5e7eb";
+                  e.currentTarget.style.color = "#475569";
+                }}
+                className="desktop-user-button"
+              >
+                <User size={16} />
+                {userName}
+              </button>
+
+              {/* モバイル版: アイコンのみ */}
+              <button
+                onClick={() => setShowModal(true)}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  width: 40,
+                  height: 40,
+                  borderRadius: 8,
+                  background: "white",
+                  border: "1px solid #e5e7eb",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#475569",
+                  transition: "all 0.2s"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "#667eea";
+                  e.currentTarget.style.color = "#667eea";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "#e5e7eb";
+                  e.currentTarget.style.color = "#475569";
+                }}
+                className="mobile-user-button"
+              >
+                <User size={20} />
+              </button>
+            </>
           )}
 
           <h1 style={{
@@ -194,93 +253,102 @@ export default function Home() {
             const isActive = agent.status === "active";
 
             const cardContent = (
-              <>
-                {/* アイコンとステータスバッジ */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-                  <div
-                    style={{
-                      width: 64,
-                      height: 64,
-                      borderRadius: 12,
-                      background: agent.gradient,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "white"
-                    }}
-                  >
-                    {agent.icon}
-                  </div>
-                  {!isActive && (
-                    <span style={{
-                      padding: "4px 12px",
-                      borderRadius: 20,
-                      background: "#fef3c7",
-                      color: "#d97706",
-                      fontSize: 12,
-                      fontWeight: 600
-                    }}>
-                      Coming Soon
-                    </span>
-                  )}
-                  {isActive && agent.badge && (
-                    <span style={{
-                      padding: "4px 12px",
-                      borderRadius: 20,
-                      background: "#dcfce7",
-                      color: "#16a34a",
-                      fontSize: 12,
-                      fontWeight: 600
-                    }}>
-                      {agent.badge}
-                    </span>
-                  )}
-                </div>
-
-                {/* タイトルと説明 */}
-                <div style={{ paddingRight: isActive ? 40 : 0 }}>
-                  <h2 style={{
-                    fontSize: "clamp(16px, 4vw, 20px)",
-                    fontWeight: 600,
-                    color: "#0f172a",
-                    marginBottom: 8,
-                    margin: 0,
-                    wordBreak: "keep-all",
-                    overflowWrap: "break-word"
-                  }}>
-                    {agent.title}
-                  </h2>
-                  <p style={{
-                    fontSize: "clamp(12px, 3vw, 14px)",
-                    color: "#64748b",
-                    lineHeight: 1.6,
-                    margin: 0
-                  }}>
-                    {agent.description}
-                  </p>
-                </div>
-
-                {/* 矢印アイコン (activeの場合のみ) */}
-                {isActive && (
-                  <div style={{
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "100%",
+                textAlign: "center",
+                position: "relative"
+              }}>
+                {/* ステータスバッジ */}
+                {!isActive && (
+                  <span style={{
                     position: "absolute",
-                    bottom: 20,
-                    right: 20,
-                    fontSize: 24,
-                    color: "#cbd5e1",
-                    lineHeight: 1
+                    top: 8,
+                    right: 8,
+                    padding: "4px 12px",
+                    borderRadius: 20,
+                    background: "#fef3c7",
+                    color: "#d97706",
+                    fontSize: 12,
+                    fontWeight: 600
                   }}>
-                    →
-                  </div>
+                    Coming Soon
+                  </span>
                 )}
-              </>
+                {isActive && agent.badge && (
+                  <span style={{
+                    position: "absolute",
+                    top: 8,
+                    right: 8,
+                    padding: "4px 12px",
+                    borderRadius: 20,
+                    background: "#dcfce7",
+                    color: "#16a34a",
+                    fontSize: 12,
+                    fontWeight: 600
+                  }}>
+                    {agent.badge}
+                  </span>
+                )}
+
+                {/* アイコン */}
+                <div
+                  style={{
+                    width: "clamp(64px, 15vw, 80px)",
+                    height: "clamp(64px, 15vw, 80px)",
+                    borderRadius: 16,
+                    background: agent.gradient,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "white",
+                    marginBottom: 16,
+                    fontSize: "clamp(32px, 8vw, 40px)"
+                  }}
+                >
+                  {agent.icon}
+                </div>
+
+                {/* タイトル */}
+                <h2 style={{
+                  fontSize: "clamp(14px, 3.5vw, 18px)",
+                  fontWeight: 600,
+                  color: "#0f172a",
+                  marginBottom: 8,
+                  margin: 0,
+                  wordBreak: "keep-all",
+                  overflowWrap: "break-word",
+                  whiteSpace: "nowrap"
+                }}>
+                  {agent.title}
+                </h2>
+
+                {/* 説明（1行のみ） */}
+                <p style={{
+                  fontSize: "clamp(11px, 2.5vw, 13px)",
+                  color: "#64748b",
+                  lineHeight: 1.4,
+                  margin: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  maxWidth: "100%",
+                  paddingLeft: 8,
+                  paddingRight: 8
+                }}>
+                  {agent.description}
+                </p>
+              </div>
             );
 
             const cardStyle = {
               position: "relative" as const,
               background: "white",
               borderRadius: 16,
-              padding: "clamp(16px, 4vw, 24px)",
+              padding: "clamp(20px, 5vw, 28px)",
               boxShadow: "0 4px 6px rgba(0,0,0,0.07)",
               border: "1px solid #e5e7eb",
               textDecoration: "none",
@@ -288,7 +356,10 @@ export default function Home() {
               opacity: isActive ? 1 : 0.6,
               transition: "all 0.3s ease",
               animationDelay: `${index * 0.1}s`,
-              overflow: "hidden" as const
+              overflow: "hidden" as const,
+              aspectRatio: "1 / 1",
+              display: "flex",
+              flexDirection: "column" as const
             };
 
             if (isActive) {
