@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ 直接処理: ${processedTranscript.length}文字 ≤ ${characterThreshold}文字`);
 
-    console.log(`📝 第${usedTwoStage ? '2' : '1'}段階: 議事録生成中...`);
+    console.log(`📝 議事録生成中...`);
 
     const SYSTEM_PROMPT = `あなたは会議の議事録を作成する専門AIアシスタントです。
 
@@ -241,7 +241,7 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
                 }
               },
             }),
-            signal: AbortSignal.timeout(50000), // 50秒タイムアウト（第2段階：議事録生成）
+            signal: AbortSignal.timeout(50000), // 50秒タイムアウト
           }
         );
 

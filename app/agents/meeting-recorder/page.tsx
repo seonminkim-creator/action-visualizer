@@ -300,19 +300,14 @@ export default function MeetingRecorder() {
     setProcessingTime(null);
     setResult(null);
 
-    // 文字数に応じて処理ステージを表示
+    // 処理ステージを表示（シンプルなメッセージ）
     const charCount = transcript.trim().length;
-    if (charCount > 5000) {
-      setProcessingStage("第1段階: 会議内容を要約中... (約20秒)");
-
-      // 20秒後に第2段階に切り替え
-      setTimeout(() => {
-        if (loading) {
-          setProcessingStage("第2段階: 議事録を生成中... (約25秒)");
-        }
-      }, 20000);
+    if (charCount > 15000) {
+      setProcessingStage("議事録を生成中... (長文のため最大50秒)");
+    } else if (charCount > 5000) {
+      setProcessingStage("議事録を生成中... (約30秒)");
     } else {
-      setProcessingStage("議事録を生成中... (最大45秒)");
+      setProcessingStage("議事録を生成中... (約20秒)");
     }
 
     try {
