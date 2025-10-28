@@ -150,7 +150,7 @@ ${searchResultText}
               maxOutputTokens: 4096, // トークン数を削減
             },
           }),
-          signal: AbortSignal.timeout(30000), // 30秒タイムアウト
+          signal: AbortSignal.timeout(50000), // 50秒タイムアウト（Node.js Runtime: 60秒以内）
         }
       );
 

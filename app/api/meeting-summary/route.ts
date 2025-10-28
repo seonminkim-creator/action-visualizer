@@ -53,7 +53,7 @@ ${transcript}
             maxOutputTokens: 3000,
           },
         }),
-        signal: AbortSignal.timeout(20000), // 20秒タイムアウト
+        signal: AbortSignal.timeout(35000), // 35秒タイムアウト（第1段階：要約）
       }
     );
 
@@ -245,7 +245,7 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
                 }
               },
             }),
-            signal: AbortSignal.timeout(25000), // 25秒タイムアウト（より積極的に）
+            signal: AbortSignal.timeout(40000), // 40秒タイムアウト（第2段階：議事録生成）
           }
         );
 

@@ -135,7 +135,7 @@ ${additionalInfo ? `【添削指示】\n${additionalInfo}\n` : ""}
             "Content-Type": "application/json",
           },
           body: JSON.stringify(requestBody),
-          signal: AbortSignal.timeout(25000), // 25秒タイムアウト
+          signal: AbortSignal.timeout(40000), // 40秒タイムアウト
         });
 
         if (response.ok) {

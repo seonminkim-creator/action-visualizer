@@ -70,6 +70,16 @@ export default function MeetingRecorder() {
     }
   }, [history]);
 
+  // transcriptが変更されたら前回の結果をクリア
+  useEffect(() => {
+    if (result !== null) {
+      setResult(null);
+      setError(null);
+      setErrorDetails(null);
+      setProcessingTime(null);
+    }
+  }, [transcript]);
+
   async function startRecording(): Promise<void> {
     try {
       let stream: MediaStream;

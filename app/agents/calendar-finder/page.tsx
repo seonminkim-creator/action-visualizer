@@ -221,13 +221,29 @@ export default function CalendarFinder() {
     const filteredResult = getFilteredResult();
     if (!filteredResult) return { subject: "", body: "" };
 
-    // 候補日を生成（祝日は除外、時間枠数を制限）
+    // 候補日を生成（祝日は除外、余裕がある時間枠を優先）
     const candidateLines: string[] = [];
+
+    // 時間枠の長さを計算する関数（分単位）
+    const getSlotDuration = (start: string, end: string): number => {
+      const [startHour, startMin] = start.split(':').map(Number);
+      const [endHour, endMin] = end.split(':').map(Number);
+      return (endHour * 60 + endMin) - (startHour * 60 + startMin);
+    };
+
     filteredResult.forEach(day => {
       if (day.slots.length > 0 && !day.isHoliday) {
         const formattedDate = formatDate(day.date, day.weekday);
-        // 最大候補数に応じて時間枠を制限
-        const limitedSlots = maxCandidates ? day.slots.slice(0, maxCandidates) : day.slots;
+
+        // 時間枠を長さでソート（長い＝余裕がある時間を優先）
+        const sortedSlots = [...day.slots].sort((a, b) => {
+          const durationA = getSlotDuration(a.start, a.end);
+          const durationB = getSlotDuration(b.start, b.end);
+          return durationB - durationA; // 降順（長い順）
+        });
+
+        // 最大候補数に応じて時間枠を制限（余裕がある順に選択）
+        const limitedSlots = maxCandidates ? sortedSlots.slice(0, maxCandidates) : sortedSlots;
         const timeSlots = limitedSlots.map(s => `${s.start}〜${s.end}`).join("／");
         candidateLines.push(`・${formattedDate} ${timeSlots}`);
       }
