@@ -513,6 +513,7 @@ export default function CalendarFinder() {
                   fontSize: "clamp(18px, 4vw, 24px)",
                   fontWeight: 600,
                   margin: 0,
+                  color: "var(--foreground)",
                 }}
               >
                 空き時間検索くん

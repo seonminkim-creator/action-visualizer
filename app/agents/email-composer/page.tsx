@@ -332,6 +332,7 @@ export default function EmailComposer() {
                 fontSize: "clamp(18px, 4vw, 24px)",
                 fontWeight: 600,
                 margin: 0,
+                color: "var(--foreground)",
               }}
             >
               メール返信叩きくん
