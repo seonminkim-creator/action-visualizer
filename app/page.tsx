@@ -235,7 +235,7 @@ export default function Home() {
           </h1>
           <p style={{
             fontSize: "clamp(14px, 3vw, 18px)",
-            color: "#64748b",
+            color: "var(--text-secondary)",
             margin: 0,
             fontWeight: 500
           }}>
@@ -318,7 +318,7 @@ export default function Home() {
                 <h2 style={{
                   fontSize: "clamp(13px, 3vw, 15px)",
                   fontWeight: 600,
-                  color: "#0f172a",
+                  color: "var(--foreground)",
                   marginBottom: 6,
                   margin: 0,
                   wordBreak: "keep-all",
@@ -331,7 +331,7 @@ export default function Home() {
                 {/* 説明（1行のみ） */}
                 <p style={{
                   fontSize: "clamp(10px, 2vw, 11px)",
-                  color: "#64748b",
+                  color: "var(--text-secondary)",
                   lineHeight: 1.3,
                   margin: 0,
                   overflow: "hidden",
