@@ -32,7 +32,7 @@ export default function CalendarFinder() {
   const [showTodayAfternoon, setShowTodayAfternoon] = useState(false); // 午後以降も当日を表示するか
   const [workStartHour, setWorkStartHour] = useState(9); // 営業開始時間
   const [workEndHour, setWorkEndHour] = useState(18); // 営業終了時間
-  const [enableSplitSlots, setEnableSplitSlots] = useState(true); // 空き時間を細分化するか
+  const [enableSplitSlots, setEnableSplitSlots] = useState(false); // 空き時間を細分化するか
 
   // ページタイトルを設定
   useEffect(() => {
@@ -54,7 +54,7 @@ export default function CalendarFinder() {
   const DEFAULT_SHOW_TODAY_AFTERNOON = false; // デフォルトで当日は非表示
   const DEFAULT_WORK_START_HOUR = 9; // デフォルト営業開始時間
   const DEFAULT_WORK_END_HOUR = 18; // デフォルト営業終了時間
-  const DEFAULT_ENABLE_SPLIT_SLOTS = true; // デフォルトで細分化ON
+  const DEFAULT_ENABLE_SPLIT_SLOTS = false; // デフォルトで細分化OFF
 
   const periods: Period[] = ["this_week", "next_week", "next_next_week", "next_month"];
   const durations = [15, 30, 45, 60];

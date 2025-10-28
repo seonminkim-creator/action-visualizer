@@ -65,6 +65,7 @@ function convertBusyToFree(busySlots: { start: string; end: string }[], date: Da
   const freeSlots: Slot[] = [];
   const workStart = workStartHour;
   const workEnd = workEndHour;
+  const workEndMin = workEnd * 60; // 営業終了時刻（分単位）
 
   // Busy時間をソート
   const sortedBusy = busySlots.sort((a, b) => {
@@ -87,13 +88,20 @@ function convertBusyToFree(busySlots: { start: string; end: string }[], date: Da
     const busyStartMin = busyStartJST.getUTCHours() * 60 + busyStartJST.getUTCMinutes();
     const busyEndMin = busyEndJST.getUTCHours() * 60 + busyEndJST.getUTCMinutes();
 
-    // 現在時刻からBusy開始までの空き時間
+    // 営業時間外のBusyは無視（営業開始前または営業終了後）
+    if (busyStartMin >= workEndMin) {
+      return; // 営業時間後の予定は無視
+    }
+
+    // 現在時刻からBusy開始までの空き時間（営業時間内のみ）
     if (currentTime < busyStartMin) {
-      const duration = busyStartMin - currentTime;
+      // 空き時間の終了は、Busy開始時刻と営業終了時刻の早い方
+      const freeEndMin = Math.min(busyStartMin, workEndMin);
+      const duration = freeEndMin - currentTime;
       if (duration >= durationMin) {
         freeSlots.push({
           start: `${String(Math.floor(currentTime / 60)).padStart(2, "0")}:${String(currentTime % 60).padStart(2, "0")}`,
-          end: `${String(Math.floor(busyStartMin / 60)).padStart(2, "0")}:${String(busyStartMin % 60).padStart(2, "0")}`,
+          end: `${String(Math.floor(freeEndMin / 60)).padStart(2, "0")}:${String(freeEndMin % 60).padStart(2, "0")}`,
         });
       }
     }
@@ -101,8 +109,7 @@ function convertBusyToFree(busySlots: { start: string; end: string }[], date: Da
     currentTime = Math.max(currentTime, busyEndMin);
   });
 
-  // 最後のBusyから終業時刻までの空き時間
-  const workEndMin = workEnd * 60;
+  // 最後のBusyから終業時刻までの空き時間（営業時間内のみ）
   if (currentTime < workEndMin) {
     const duration = workEndMin - currentTime;
     if (duration >= durationMin) {
