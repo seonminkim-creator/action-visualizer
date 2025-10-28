@@ -7,11 +7,22 @@ export async function GET(request: NextRequest) {
   // どちらかのトークンがあれば認証済みとする
   const authenticated = !!(googleToken || microsoftToken);
 
-  // どのプロバイダーで認証されているかも返す
-  const provider = googleToken ? "google" : microsoftToken ? "microsoft" : null;
+  // 両方のプロバイダーの状態を返す
+  const providers = {
+    google: !!googleToken,
+    microsoft: !!microsoftToken
+  };
+
+  console.log("🔍 認証状態チェック:", {
+    googleToken: !!googleToken,
+    microsoftToken: !!microsoftToken,
+    authenticated,
+  });
 
   return NextResponse.json({
     authenticated,
-    provider
+    providers,
+    // 後方互換性のため、どちらか1つを返す（優先順位: google > microsoft）
+    provider: googleToken ? "google" : microsoftToken ? "microsoft" : null
   });
 }

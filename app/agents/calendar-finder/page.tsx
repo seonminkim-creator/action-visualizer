@@ -16,6 +16,7 @@ export default function CalendarFinder() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [authChecking, setAuthChecking] = useState(true); // 認証チェック中
+  const [authenticatedProviders, setAuthenticatedProviders] = useState<{google: boolean, microsoft: boolean}>({google: false, microsoft: false}); // 各プロバイダーの認証状態
   const [showSettings, setShowSettings] = useState(false); // 設定モーダル
   const [mailSubject, setMailSubject] = useState("打合せ候補日のご提案（{期間}）");
   const [mailBody, setMailBody] = useState(`＜候補日＞
@@ -28,7 +29,7 @@ export default function CalendarFinder() {
   const [ignoreKeywords, setIgnoreKeywords] = useState("空き,調整可能");
   const [dateFormat, setDateFormat] = useState("yy/mm/dd（曜日）"); // 日付フォーマット
   const [maxCandidates, setMaxCandidates] = useState<number | null>(null); // 最大候補数（nullは全部）
-  const [showTodayAfternoon, setShowTodayAfternoon] = useState(true); // 午後以降も当日を表示するか
+  const [showTodayAfternoon, setShowTodayAfternoon] = useState(false); // 午後以降も当日を表示するか
   const [workStartHour, setWorkStartHour] = useState(9); // 営業開始時間
   const [workEndHour, setWorkEndHour] = useState(18); // 営業終了時間
   const [enableSplitSlots, setEnableSplitSlots] = useState(true); // 空き時間を細分化するか
@@ -50,7 +51,7 @@ export default function CalendarFinder() {
   const DEFAULT_KEYWORDS = "空き,調整可能";
   const DEFAULT_DATE_FORMAT = "yy/mm/dd（曜日）";
   const DEFAULT_MAX_CANDIDATES = null; // デフォルトは全部
-  const DEFAULT_SHOW_TODAY_AFTERNOON = true; // デフォルトで当日も表示
+  const DEFAULT_SHOW_TODAY_AFTERNOON = false; // デフォルトで当日は非表示
   const DEFAULT_WORK_START_HOUR = 9; // デフォルト営業開始時間
   const DEFAULT_WORK_END_HOUR = 18; // デフォルト営業終了時間
   const DEFAULT_ENABLE_SPLIT_SLOTS = true; // デフォルトで細分化ON
@@ -85,6 +86,14 @@ export default function CalendarFinder() {
     if (params.get("authenticated") === "true") {
       setIsAuthenticated(true);
       setAuthChecking(false);
+
+      // プロバイダー情報を取得してセット
+      const provider = params.get("provider");
+      if (provider === "microsoft" || provider === "google") {
+        setCalendarProvider(provider);
+        console.log(`✅ 認証完了: プロバイダー=${provider}`);
+      }
+
       // URLをクリーンアップ
       window.history.replaceState({}, "", "/agents/calendar-finder");
       return;
@@ -95,11 +104,18 @@ export default function CalendarFinder() {
       try {
         const response = await fetch("/api/calendar/check-auth");
         const data = await response.json();
+
+        console.log("✅ 認証状態:", data);
+
         if (data.authenticated) {
           setIsAuthenticated(true);
-          // 認証されているプロバイダーをセット
-          if (data.provider) {
-            setCalendarProvider(data.provider);
+          // 両方のプロバイダーの認証状態を保存
+          if (data.providers) {
+            setAuthenticatedProviders(data.providers);
+            // デフォルトで認証済みのプロバイダーを選択
+            if (data.provider) {
+              setCalendarProvider(data.provider);
+            }
           }
         }
       } catch (error) {
@@ -137,6 +153,8 @@ export default function CalendarFinder() {
         ? "/api/calendar/availability"
         : "/api/calendar/availability-microsoft";
 
+      console.log(`📞 呼び出し: provider=${calendarProvider}, endpoint=${endpoint}`);
+
       const response = await fetch(endpoint, {
         method: "POST",
         headers: {
@@ -148,6 +166,7 @@ export default function CalendarFinder() {
           ignoreKeywords: ignoreKeywords.split(",").map(k => k.trim()).filter(k => k),
           workStartHour,
           workEndHour,
+          showTodayAfternoon,
         }),
       });
 
@@ -169,9 +188,11 @@ export default function CalendarFinder() {
       }
 
       const data = await response.json();
+      console.log(`✅ ${calendarProvider === "google" ? "Google" : "Outlook"}カレンダーからデータ取得成功:`, data);
       setResult(data.days);
     } catch (error) {
       console.error("カレンダー取得エラー:", error);
+      alert(`カレンダーデータの取得に失敗しました。\nエラー: ${error}\n\nモックデータを表示します。`);
       // エラー時はモックデータを使用
       const mockData = getMockAvailability(period);
       setResult(mockData.days);
@@ -222,9 +243,23 @@ export default function CalendarFinder() {
 
     return result
       .map(day => {
-        // 設定により、当日かつ午後以降（12時以降）の場合はスキップ
-        if (!showTodayAfternoon && day.date === todayStr && currentHour >= 12) {
-          return null;
+        // 設定により、当日の午後を表示しない場合の処理
+        if (!showTodayAfternoon && day.date === todayStr) {
+          // 午前中なら午前の枠のみ表示、午後以降なら当日全体をスキップ
+          if (currentHour >= 12) {
+            return null; // 午後以降は当日全体をスキップ
+          } else {
+            // 午前中は午前の枠のみ表示（午後の枠を除外）
+            const morningSlots = day.slots.filter(slot => {
+              const hour = parseInt(slot.start.split(":")[0]);
+              return hour < 12;
+            });
+            if (morningSlots.length === 0) {
+              return null; // 午前に枠がなければスキップ
+            }
+            // 午前の枠のみで処理を続ける
+            day = { ...day, slots: morningSlots };
+          }
         }
 
         // 各日の枠を所要時間以上のものだけにフィルタ
@@ -263,23 +298,35 @@ export default function CalendarFinder() {
       if (day.slots.length === 0) {
         lines.push("（空きなし）");
       } else {
-        // 午前と午後に分ける
-        const morningSlots = day.slots.filter(slot => {
-          const hour = parseInt(slot.start.split(":")[0]);
-          return hour < 12;
-        });
-        const afternoonSlots = day.slots.filter(slot => {
-          const hour = parseInt(slot.start.split(":")[0]);
-          return hour >= 12;
+        // 時系列順にソート
+        const sortedSlots = [...day.slots].sort((a, b) => {
+          const aTime = a.start.split(":").map(Number);
+          const bTime = b.start.split(":").map(Number);
+          const aMinutes = aTime[0] * 60 + aTime[1];
+          const bMinutes = bTime[0] * 60 + bTime[1];
+          return aMinutes - bMinutes;
         });
 
-        if (morningSlots.length > 0) {
-          const morningTimes = morningSlots.map(slot => `${slot.start}〜${slot.end}`).join(", ");
-          lines.push(`【午前】${morningTimes}`);
-        }
-        if (afternoonSlots.length > 0) {
-          const afternoonTimes = afternoonSlots.map(slot => `${slot.start}〜${slot.end}`).join(", ");
-          lines.push(`【午後】${afternoonTimes}`);
+        // 終日空き（1つの枠で営業時間全体が空いている）の場合のみ午前・午後で分割
+        if (sortedSlots.length === 1) {
+          const slot = sortedSlots[0];
+          const [startHour] = slot.start.split(":").map(Number);
+          const [endHour] = slot.end.split(":").map(Number);
+
+          // 営業開始時刻から始まり、営業終了時刻まで続く枠の場合
+          if (startHour <= workStartHour && endHour >= workEndHour - 1) {
+            // 午前と午後に分割（12:00-13:00は昼休みと仮定）
+            lines.push(`【午前】${String(workStartHour).padStart(2, "0")}:00〜12:00`);
+            lines.push(`【午後】13:00〜${String(workEndHour).padStart(2, "0")}:00`);
+          } else {
+            // 終日空きではない場合は通常表示
+            const timeSlots = sortedSlots.map(slot => `${slot.start}〜${slot.end}`).join("／");
+            lines.push(timeSlots);
+          }
+        } else {
+          // 複数の枠がある場合は通常表示
+          const timeSlots = sortedSlots.map(slot => `${slot.start}〜${slot.end}`).join("／");
+          lines.push(timeSlots);
         }
       }
     });
@@ -332,14 +379,16 @@ export default function CalendarFinder() {
       if (day.slots.length > 0 && !day.isHoliday) {
         const formattedDate = formatDate(day.date, day.weekday);
 
-        // 時間枠を長さでソート（長い＝余裕がある時間を優先）
+        // 時系列順にソート
         const sortedSlots = [...day.slots].sort((a, b) => {
-          const durationA = getSlotDuration(a.start, a.end);
-          const durationB = getSlotDuration(b.start, b.end);
-          return durationB - durationA; // 降順（長い順）
+          const aTime = a.start.split(":").map(Number);
+          const bTime = b.start.split(":").map(Number);
+          const aMinutes = aTime[0] * 60 + aTime[1];
+          const bMinutes = bTime[0] * 60 + bTime[1];
+          return aMinutes - bMinutes; // 昇順（早い順）
         });
 
-        // 最大候補数に応じて時間枠を制限（余裕がある順に選択）
+        // 最大候補数に応じて時間枠を制限（時系列で先頭から選択）
         const limitedSlots = maxCandidates ? sortedSlots.slice(0, maxCandidates) : sortedSlots;
         const timeSlots = limitedSlots.map(s => `${s.start}〜${s.end}`).join("／");
         candidateLines.push(`・${formattedDate} ${timeSlots}`);
@@ -477,29 +526,52 @@ export default function CalendarFinder() {
                   borderRadius: "50%",
                   background: "#22c55e"
                 }} />
+                <span style={{
+                  fontSize: 12,
+                  color: "#22c55e",
+                  fontWeight: 500
+                }}>
+                  {calendarProvider === "google" ? "Google" : "Outlook"}連携中
+                </span>
                 <button
                   onClick={async () => {
                     const providerName = calendarProvider === "google" ? "Google" : "Outlook";
                     if (window.confirm(`${providerName}カレンダーとの連携を解除しますか？\n再度連携が必要になります。`)) {
                       try {
-                        // プロバイダーに応じたクッキーを削除
-                        if (calendarProvider === "google") {
-                          // Googleのクッキーを削除
-                          document.cookie = "google_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-                          document.cookie = "google_refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-                        } else {
-                          // Microsoftのクッキーを削除
-                          document.cookie = "microsoft_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-                          document.cookie = "microsoft_refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                        // サーバー側でクッキーを削除
+                        const response = await fetch("/api/auth/disconnect", {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                          },
+                          body: JSON.stringify({
+                            provider: calendarProvider,
+                          }),
+                        });
+
+                        if (!response.ok) {
+                          throw new Error("連携解除に失敗しました");
                         }
-                        setIsAuthenticated(false);
+
+                        console.log(`✅ ${providerName}カレンダーとの連携を解除しました`);
+
+                        // 該当プロバイダーの認証状態を更新
+                        const newAuthProviders = { ...authenticatedProviders };
+                        newAuthProviders[calendarProvider] = false;
+                        setAuthenticatedProviders(newAuthProviders);
+
+                        // 両方とも未認証になった場合のみ isAuthenticated を false に
+                        if (!newAuthProviders.google && !newAuthProviders.microsoft) {
+                          setIsAuthenticated(false);
+                        }
+
                         setResult(null);
                         setSelectedPeriod(null);
                         setDurationMin(null);
                         window.location.reload();
                       } catch (error) {
                         console.error("連携解除エラー:", error);
-                        alert("連携解除に失敗しました");
+                        alert(`連携解除に失敗しました\nエラー: ${error}`);
                       }
                     }
                   }}
@@ -531,7 +603,7 @@ export default function CalendarFinder() {
           </p>
         </div>
 
-        {/* カレンダープロバイダー選択 & 認証ボタン - 認証チェック完了後のみ表示 */}
+        {/* カレンダープロバイダー選択 - 未認証の場合のみ表示 */}
         {!authChecking && !isAuthenticated && (
           <div style={{
             background: "white",
@@ -567,9 +639,21 @@ export default function CalendarFinder() {
                   fontWeight: 600,
                   transition: "all 0.2s",
                   boxShadow: calendarProvider === "google" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                  position: "relative",
                 }}
               >
                 Google
+                {authenticatedProviders.google && (
+                  <span style={{
+                    position: "absolute",
+                    top: 4,
+                    right: 4,
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    background: "#22c55e",
+                  }} />
+                )}
               </button>
               <button
                 onClick={() => setCalendarProvider("microsoft")}
@@ -585,35 +669,66 @@ export default function CalendarFinder() {
                   fontWeight: 600,
                   transition: "all 0.2s",
                   boxShadow: calendarProvider === "microsoft" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                  position: "relative",
                 }}
               >
                 Outlook
+                {authenticatedProviders.microsoft && (
+                  <span style={{
+                    position: "absolute",
+                    top: 4,
+                    right: 4,
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    background: "#22c55e",
+                  }} />
+                )}
               </button>
             </div>
 
-            {/* 認証ボタン */}
-            <button
-              onClick={handleCalendarAuth}
-              disabled={authLoading}
-              style={{
+            {/* 認証ボタン - 選択されたプロバイダーが未認証の場合のみ表示 */}
+            {!authenticatedProviders[calendarProvider] && (
+              <button
+                onClick={handleCalendarAuth}
+                disabled={authLoading}
+                style={{
+                  width: "100%",
+                  padding: "12px 20px",
+                  borderRadius: 8,
+                  background: authLoading ? "#94a3b8" : "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                  color: "white",
+                  border: "none",
+                  cursor: authLoading ? "not-allowed" : "pointer",
+                  fontSize: 15,
+                  fontWeight: 600,
+                  transition: "all 0.2s"
+                }}
+              >
+                {authLoading
+                  ? "認証中..."
+                  : calendarProvider === "google"
+                  ? "Googleカレンダーと連携"
+                  : "Outlookカレンダーと連携"}
+              </button>
+            )}
+
+            {/* 認証済みメッセージ */}
+            {authenticatedProviders[calendarProvider] && (
+              <div style={{
                 width: "100%",
                 padding: "12px 20px",
                 borderRadius: 8,
-                background: authLoading ? "#94a3b8" : "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-                color: "white",
-                border: "none",
-                cursor: authLoading ? "not-allowed" : "pointer",
-                fontSize: 15,
-                fontWeight: 600,
-                transition: "all 0.2s"
-              }}
-            >
-              {authLoading
-                ? "認証中..."
-                : calendarProvider === "google"
-                ? "Googleカレンダーと連携"
-                : "Outlookカレンダーと連携"}
-            </button>
+                background: "#f0fdf4",
+                border: "1px solid #86efac",
+                color: "#166534",
+                fontSize: 14,
+                fontWeight: 500,
+                textAlign: "center"
+              }}>
+                {calendarProvider === "google" ? "Google" : "Outlook"}カレンダーと連携済み ✓
+              </div>
+            )}
           </div>
         )}
 
@@ -664,6 +779,49 @@ export default function CalendarFinder() {
             メール候補
           </button>
         </div>
+
+        {/* 細分化ON/OFFトグル */}
+        {isAuthenticated && (
+          <div style={{
+            marginBottom: 16,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            background: "white",
+            padding: 12,
+            borderRadius: 8,
+            border: "1px solid #e5e7eb"
+          }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a", marginBottom: 4 }}>
+                空き時間を細分化
+              </div>
+              <div style={{ fontSize: 12, color: "#64748b" }}>
+                {enableSplitSlots ? "30分刻みで表示中" : "まとめて表示中"}
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                const newValue = !enableSplitSlots;
+                setEnableSplitSlots(newValue);
+                localStorage.setItem("enableSplitSlots", String(newValue));
+              }}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 6,
+                background: enableSplitSlots ? "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)" : "#f1f5f9",
+                color: enableSplitSlots ? "white" : "#64748b",
+                border: "none",
+                cursor: "pointer",
+                fontSize: 13,
+                fontWeight: 600,
+                transition: "all 0.2s"
+              }}
+            >
+              {enableSplitSlots ? "ON" : "OFF"}
+            </button>
+          </div>
+        )}
 
         {/* 期間選択 */}
         <div style={{ marginBottom: 16 }}>
@@ -783,24 +941,23 @@ export default function CalendarFinder() {
                 {periodLabels[selectedPeriod]}
               </h2>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {mode === "mail" && (
-                  <button
-                    onClick={() => setShowSettings(true)}
-                    style={{
-                      padding: "8px 16px",
-                      borderRadius: 8,
-                      background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-                      border: "none",
-                      cursor: "pointer",
-                      fontSize: 13,
-                      fontWeight: 500,
-                      color: "white",
-                      transition: "all 0.2s"
-                    }}
-                  >
-                    カスタマイズ
-                  </button>
-                )}
+                {/* 訪問モードとメールモード両方でカスタマイズボタンを表示 */}
+                <button
+                  onClick={() => setShowSettings(true)}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 8,
+                    background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: "white",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  カスタマイズ
+                </button>
                 <button
                   onClick={handleBack}
                   style={{
@@ -886,70 +1043,34 @@ export default function CalendarFinder() {
                           空きなし
                         </div>
                       ) : (() => {
-                        // 午前と午後に分ける
-                        const morningSlots = day.slots.filter(slot => {
-                          const hour = parseInt(slot.start.split(":")[0]);
-                          return hour < 12;
-                        });
-                        const afternoonSlots = day.slots.filter(slot => {
-                          const hour = parseInt(slot.start.split(":")[0]);
-                          return hour >= 12;
+                        // 時系列順にソート
+                        const sortedSlots = [...day.slots].sort((a, b) => {
+                          const aTime = a.start.split(":").map(Number);
+                          const bTime = b.start.split(":").map(Number);
+                          const aMinutes = aTime[0] * 60 + aTime[1];
+                          const bMinutes = bTime[0] * 60 + bTime[1];
+                          return aMinutes - bMinutes;
                         });
 
                         return (
-                          <div>
-                            {morningSlots.length > 0 && (
-                              <div style={{ marginBottom: afternoonSlots.length > 0 ? 16 : 0 }}>
-                                <div style={{ fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 8 }}>
-                                  【午前】
-                                </div>
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                                  {morningSlots.map((slot, sidx) => (
-                                    <div
-                                      key={sidx}
-                                      style={{
-                                        padding: "10px 14px",
-                                        background: "#fef3c7",
-                                        borderRadius: 6,
-                                        fontSize: 14,
-                                        fontWeight: 500,
-                                        color: "#92400e",
-                                        border: "1px solid #fde68a",
-                                        whiteSpace: "nowrap"
-                                      }}
-                                    >
-                                      {slot.start}〜{slot.end}
-                                    </div>
-                                  ))}
-                                </div>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                            {sortedSlots.map((slot, sidx) => (
+                              <div
+                                key={sidx}
+                                style={{
+                                  padding: "10px 14px",
+                                  background: "#f1f5f9",
+                                  borderRadius: 6,
+                                  fontSize: 14,
+                                  fontWeight: 500,
+                                  color: "#334155",
+                                  border: "1px solid #e2e8f0",
+                                  whiteSpace: "nowrap"
+                                }}
+                              >
+                                {slot.start}〜{slot.end}
                               </div>
-                            )}
-                            {afternoonSlots.length > 0 && (
-                              <div>
-                                <div style={{ fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 8 }}>
-                                  【午後】
-                                </div>
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                                  {afternoonSlots.map((slot, sidx) => (
-                                    <div
-                                      key={sidx}
-                                      style={{
-                                        padding: "10px 14px",
-                                        background: "#dbeafe",
-                                        borderRadius: 6,
-                                        fontSize: 14,
-                                        fontWeight: 500,
-                                        color: "#1e40af",
-                                        border: "1px solid #bfdbfe",
-                                        whiteSpace: "nowrap"
-                                      }}
-                                    >
-                                      {slot.start}〜{slot.end}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
+                            ))}
                           </div>
                         );
                       })()}
@@ -1034,13 +1155,15 @@ export default function CalendarFinder() {
             onClick={(e) => e.stopPropagation()}
             >
               <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16 }}>
-                メール設定
+                {mode === "mail" ? "メール設定" : "表示設定"}
               </h2>
 
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
-                  件名テンプレート
-                </label>
+              {mode === "mail" && (
+                <>
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
+                      件名テンプレート
+                    </label>
                 <input
                   type="text"
                   value={mailSubject}
@@ -1082,6 +1205,8 @@ export default function CalendarFinder() {
                   {"{候補日}"} と入力すると候補日リストに置換されます
                 </p>
               </div>
+                </>
+              )}
 
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
@@ -1107,13 +1232,14 @@ export default function CalendarFinder() {
                   <option value="mm/dd">10/27</option>
                 </select>
                 <p style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
-                  メール本文の日付表示形式を選択できます
+                  {mode === "mail" ? "メール本文の日付表示形式を選択できます" : "日付の表示形式を選択できます"}
                 </p>
               </div>
 
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
-                  無視するキーワード（カンマ区切り）
+              {mode === "mail" && (
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
+                    無視するキーワード（カンマ区切り）
                 </label>
                 <input
                   type="text"
@@ -1132,10 +1258,11 @@ export default function CalendarFinder() {
                   これらのキーワードを含む予定は空き時間として扱われます
                 </p>
               </div>
+              )}
 
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
-                  メール本文に表示する候補数
+                  {mode === "mail" ? "メール本文に表示する候補数" : "表示する候補数"}
                 </label>
                 <select
                   value={maxCandidates === null ? "all" : String(maxCandidates)}
@@ -1155,7 +1282,7 @@ export default function CalendarFinder() {
                   <option value="all">全部</option>
                 </select>
                 <p style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
-                  メールに含める候補日の最大数を制限できます
+                  {mode === "mail" ? "メールに含める候補日の最大数を制限できます" : "画面に表示する候補日の最大数を制限できます"}
                 </p>
               </div>
 
@@ -1171,21 +1298,6 @@ export default function CalendarFinder() {
                 </label>
                 <p style={{ fontSize: 12, color: "#64748b", marginTop: 4, marginLeft: 26 }}>
                   オフにすると、12時以降は当日の候補を表示しません
-                </p>
-              </div>
-
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={enableSplitSlots}
-                    onChange={(e) => setEnableSplitSlots(e.target.checked)}
-                    style={{ width: 18, height: 18, cursor: "pointer" }}
-                  />
-                  空き時間を細分化して表示する
-                </label>
-                <p style={{ fontSize: 12, color: "#64748b", marginTop: 4, marginLeft: 26 }}>
-                  オフにすると、長い空き時間をまとめて表示します（例: 09:00-18:00）
                 </p>
               </div>
 

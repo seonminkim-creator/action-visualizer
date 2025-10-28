@@ -60,6 +60,13 @@ export async function GET(request: NextRequest) {
 
     const tokens = await tokenResponse.json();
 
+    console.log("✅ Microsoft トークン取得成功:", {
+      hasAccessToken: !!tokens.access_token,
+      hasRefreshToken: !!tokens.refresh_token,
+      expiresIn: tokens.expires_in,
+      tokenType: tokens.token_type,
+    });
+
     // トークンをクッキーに保存
     const response = NextResponse.redirect(
       new URL("/agents/calendar-finder?authenticated=true&provider=microsoft", request.url)
@@ -72,6 +79,7 @@ export async function GET(request: NextRequest) {
         maxAge: tokens.expires_in || 3600, // トークンの有効期限（通常1時間）
         path: "/",
       });
+      console.log("🍪 microsoft_access_token クッキーを設定");
     }
 
     if (tokens.refresh_token) {
@@ -81,6 +89,7 @@ export async function GET(request: NextRequest) {
         maxAge: 60 * 60 * 24 * 90, // 90日（Microsoftのrefresh tokenは長期有効）
         path: "/",
       });
+      console.log("🍪 microsoft_refresh_token クッキーを設定");
     }
 
     return response;

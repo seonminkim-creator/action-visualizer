@@ -70,8 +70,9 @@ function convertBusyToFree(
   let currentTime = isToday ? Math.max(workStart * 60, currentTimeMin) : workStart * 60;
 
   sortedBusy.forEach((busy) => {
-    const busyStart = new Date(busy.start);
-    const busyEnd = new Date(busy.end);
+    // Microsoft Graph APIの時刻文字列に "Z" を追加してUTCとして扱う
+    const busyStart = new Date(busy.start + "Z");
+    const busyEnd = new Date(busy.end + "Z");
 
     // 日本時間（JST = UTC+9）に変換
     const busyStartJST = new Date(busyStart.getTime() + 9 * 60 * 60 * 1000);
@@ -124,12 +125,19 @@ function getWeekday(date: Date): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const { period, durationMin = 60, ignoreKeywords = [], workStartHour = 9, workEndHour = 18 } = await request.json();
+    const { period, durationMin = 60, ignoreKeywords = [], workStartHour = 9, workEndHour = 18, showTodayAfternoon = false } = await request.json();
 
     // クッキーからMicrosoft access tokenを取得
     const accessToken = request.cookies.get("microsoft_access_token")?.value;
 
+    console.log("🔍 Microsoft access token チェック:", {
+      hasToken: !!accessToken,
+      tokenLength: accessToken?.length,
+      tokenPreview: accessToken ? `${accessToken.substring(0, 20)}...` : "なし",
+    });
+
     if (!accessToken) {
+      console.error("❌ Microsoft access token が見つかりません");
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
@@ -165,6 +173,8 @@ export async function POST(request: NextRequest) {
     const events = eventsData.value || [];
 
     console.log(`📅 Microsoft Calendar: ${events.length}件のイベントを取得`);
+    console.log(`📅 期間: ${start.toISOString()} 〜 ${end.toISOString()}`);
+    console.log(`📅 イベント詳細:`, JSON.stringify(events, null, 2));
 
     // 無視するキーワードを含まないイベントのみを抽出
     const busySlots = events
@@ -208,8 +218,11 @@ export async function POST(request: NextRequest) {
       // 土日はスキップ
       if (dayOfWeek !== 0 && dayOfWeek !== 6) {
         // その日のBusy時間を抽出
+        // Microsoft Graph APIは "2025-10-29T01:00:00.0000000" のようなUTCタイムスタンプを返す
         const dayBusy = busySlots.filter((busy: any) => {
-          const busyStart = new Date(busy.start);
+          // Microsoft APIの時刻は既にUTC形式なので、そのままDate objectに変換
+          const busyStart = new Date(busy.start + "Z"); // "Z"を追加してUTCとして明示
+          // JSTに変換（UTC+9時間）
           const busyStartJST = new Date(busyStart.getTime() + 9 * 60 * 60 * 1000);
           const busyDateStr = busyStartJST.toISOString().split("T")[0];
           return busyDateStr === dateStr;
@@ -231,7 +244,24 @@ export async function POST(request: NextRequest) {
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    return NextResponse.json({ days });
+    // 今日の午後表示設定に応じてフィルタリング
+    const filteredDays = days.filter(day => {
+      if (!showTodayAfternoon && day.date === todayStr) {
+        const currentHour = nowJST.getUTCHours();
+        // 午後以降（12時以降）は当日をスキップ
+        if (currentHour >= 12) {
+          return false;
+        }
+        // 午前中は午前の枠のみ残す
+        day.slots = day.slots.filter(slot => {
+          const hour = parseInt(slot.start.split(":")[0]);
+          return hour < 12;
+        });
+      }
+      return true;
+    });
+
+    return NextResponse.json({ days: filteredDays });
   } catch (error: any) {
     console.error("Microsoft Calendar API error:", error);
 
