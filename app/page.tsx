@@ -243,128 +243,141 @@ export default function Home() {
           </p>
         </div>
 
-        {/* エージェントカードグリッド */}
-        <div
-          className="agents-grid"
-          style={{
-            display: "grid",
-            gap: 16
-          }}
-        >
-          {agents.map((agent, index) => {
-            const isActive = agent.status === "active";
+        {/* 公開済みエージェント */}
+        <div style={{ marginBottom: 48 }}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            marginBottom: 20
+          }}>
+            <div style={{
+              width: 4,
+              height: 24,
+              background: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+              borderRadius: 2
+            }} />
+            <h2 style={{
+              fontSize: "clamp(18px, 4vw, 24px)",
+              fontWeight: 700,
+              color: "var(--foreground)",
+              margin: 0
+            }}>
+              公開済み
+            </h2>
+            <span style={{
+              padding: "4px 12px",
+              borderRadius: 20,
+              background: "#dcfce7",
+              color: "#16a34a",
+              fontSize: "clamp(11px, 2.5vw, 13px)",
+              fontWeight: 600
+            }}>
+              {agents.filter(a => a.status === "active").length}個
+            </span>
+          </div>
 
-            const cardContent = (
-              <div style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                height: "100%",
-                textAlign: "center",
-                position: "relative"
-              }}>
-                {/* ステータスバッジ */}
-                {!isActive && (
-                  <span style={{
-                    position: "absolute",
-                    top: 8,
-                    right: 8,
-                    padding: "4px 12px",
-                    borderRadius: 20,
-                    background: "#fef3c7",
-                    color: "#d97706",
-                    fontSize: 12,
-                    fontWeight: 600
-                  }}>
-                    Coming Soon
-                  </span>
-                )}
-                {isActive && agent.badge && (
-                  <span style={{
-                    position: "absolute",
-                    top: 8,
-                    right: 8,
-                    padding: "4px 12px",
-                    borderRadius: 20,
-                    background: "#dcfce7",
-                    color: "#16a34a",
-                    fontSize: 12,
-                    fontWeight: 600
-                  }}>
-                    {agent.badge}
-                  </span>
-                )}
+          <div
+            className="agents-grid"
+            style={{
+              display: "grid",
+              gap: 16
+            }}
+          >
+            {agents.filter(agent => agent.status === "active").map((agent, index) => {
+              const cardContent = (
+                <div style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  height: "100%",
+                  textAlign: "center",
+                  position: "relative"
+                }}>
+                  {agent.badge && (
+                    <span style={{
+                      position: "absolute",
+                      top: 8,
+                      right: 8,
+                      padding: "4px 12px",
+                      borderRadius: 20,
+                      background: "#dcfce7",
+                      color: "#16a34a",
+                      fontSize: 12,
+                      fontWeight: 600
+                    }}>
+                      {agent.badge}
+                    </span>
+                  )}
 
-                {/* アイコン */}
-                <div
-                  style={{
-                    width: "clamp(48px, 12vw, 56px)",
-                    height: "clamp(48px, 12vw, 56px)",
-                    borderRadius: 12,
-                    background: agent.gradient,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "white",
-                    marginBottom: 12,
-                    fontSize: "clamp(24px, 6vw, 28px)"
-                  }}
-                >
-                  {agent.icon}
+                  {/* アイコン */}
+                  <div
+                    style={{
+                      width: "clamp(48px, 12vw, 56px)",
+                      height: "clamp(48px, 12vw, 56px)",
+                      borderRadius: 12,
+                      background: agent.gradient,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "white",
+                      marginBottom: 12,
+                      fontSize: "clamp(24px, 6vw, 28px)"
+                    }}
+                  >
+                    {agent.icon}
+                  </div>
+
+                  {/* タイトル */}
+                  <h2 style={{
+                    fontSize: "clamp(13px, 3vw, 15px)",
+                    fontWeight: 600,
+                    color: "var(--foreground)",
+                    marginBottom: 6,
+                    margin: 0,
+                    wordBreak: "keep-all",
+                    overflowWrap: "break-word",
+                    whiteSpace: "nowrap"
+                  }}>
+                    {agent.title}
+                  </h2>
+
+                  {/* 説明（1行のみ） */}
+                  <p style={{
+                    fontSize: "clamp(10px, 2vw, 11px)",
+                    color: "var(--text-secondary)",
+                    lineHeight: 1.3,
+                    margin: 0,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    maxWidth: "100%",
+                    paddingLeft: 8,
+                    paddingRight: 8
+                  }}>
+                    {agent.description}
+                  </p>
                 </div>
+              );
 
-                {/* タイトル */}
-                <h2 style={{
-                  fontSize: "clamp(13px, 3vw, 15px)",
-                  fontWeight: 600,
-                  color: "var(--foreground)",
-                  marginBottom: 6,
-                  margin: 0,
-                  wordBreak: "keep-all",
-                  overflowWrap: "break-word",
-                  whiteSpace: "nowrap"
-                }}>
-                  {agent.title}
-                </h2>
+              const cardStyle = {
+                position: "relative" as const,
+                background: "var(--card-bg)",
+                borderRadius: 12,
+                padding: "clamp(16px, 4vw, 20px)",
+                boxShadow: "0 2px 4px rgba(0,0,0,0.06)",
+                border: "1px solid var(--card-border)",
+                textDecoration: "none",
+                cursor: "pointer" as const,
+                transition: "all 0.3s ease",
+                animationDelay: `${index * 0.1}s`,
+                overflow: "hidden" as const,
+                aspectRatio: "1 / 1",
+                display: "flex",
+                flexDirection: "column" as const
+              };
 
-                {/* 説明（1行のみ） */}
-                <p style={{
-                  fontSize: "clamp(10px, 2vw, 11px)",
-                  color: "var(--text-secondary)",
-                  lineHeight: 1.3,
-                  margin: 0,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  maxWidth: "100%",
-                  paddingLeft: 8,
-                  paddingRight: 8
-                }}>
-                  {agent.description}
-                </p>
-              </div>
-            );
-
-            const cardStyle = {
-              position: "relative" as const,
-              background: "white",
-              borderRadius: 12,
-              padding: "clamp(16px, 4vw, 20px)",
-              boxShadow: "0 2px 4px rgba(0,0,0,0.06)",
-              border: "1px solid #e5e7eb",
-              textDecoration: "none",
-              cursor: isActive ? ("pointer" as const) : ("not-allowed" as const),
-              opacity: isActive ? 1 : 0.6,
-              transition: "all 0.3s ease",
-              animationDelay: `${index * 0.1}s`,
-              overflow: "hidden" as const,
-              aspectRatio: "1 / 1",
-              display: "flex",
-              flexDirection: "column" as const
-            };
-
-            if (isActive) {
               return (
                 <Link
                   key={agent.id}
@@ -374,30 +387,167 @@ export default function Home() {
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = "translateY(-4px)";
                     e.currentTarget.style.boxShadow = "0 12px 24px rgba(0,0,0,0.15)";
-                    e.currentTarget.style.borderColor = "#cbd5e1";
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow = "0 4px 6px rgba(0,0,0,0.07)";
-                    e.currentTarget.style.borderColor = "#e5e7eb";
+                    e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.06)";
                   }}
                 >
                   {cardContent}
                 </Link>
               );
-            }
-
-            return (
-              <div
-                key={agent.id}
-                className="agent-card"
-                style={cardStyle}
-              >
-                {cardContent}
-              </div>
-            );
-          })}
+            })}
+          </div>
         </div>
+
+        {/* 未公開エージェント (Coming Soon) */}
+        {agents.filter(agent => agent.status === "coming-soon").length > 0 && (
+          <div>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              marginBottom: 20
+            }}>
+              <div style={{
+                width: 4,
+                height: 24,
+                background: "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)",
+                borderRadius: 2
+              }} />
+              <h2 style={{
+                fontSize: "clamp(18px, 4vw, 24px)",
+                fontWeight: 700,
+                color: "var(--foreground)",
+                margin: 0
+              }}>
+                未公開（Coming Soon）
+              </h2>
+              <span style={{
+                padding: "4px 12px",
+                borderRadius: 20,
+                background: "#fef3c7",
+                color: "#d97706",
+                fontSize: "clamp(11px, 2.5vw, 13px)",
+                fontWeight: 600
+              }}>
+                {agents.filter(a => a.status === "coming-soon").length}個
+              </span>
+            </div>
+
+            <div
+              className="agents-grid"
+              style={{
+                display: "grid",
+                gap: 16
+              }}
+            >
+              {agents.filter(agent => agent.status === "coming-soon").map((agent, index) => {
+                const cardContent = (
+                  <div style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: "100%",
+                    textAlign: "center",
+                    position: "relative"
+                  }}>
+                    <span style={{
+                      position: "absolute",
+                      top: 8,
+                      right: 8,
+                      padding: "4px 12px",
+                      borderRadius: 20,
+                      background: "#fef3c7",
+                      color: "#d97706",
+                      fontSize: 12,
+                      fontWeight: 600
+                    }}>
+                      Coming Soon
+                    </span>
+
+                    {/* アイコン */}
+                    <div
+                      style={{
+                        width: "clamp(48px, 12vw, 56px)",
+                        height: "clamp(48px, 12vw, 56px)",
+                        borderRadius: 12,
+                        background: agent.gradient,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "white",
+                        marginBottom: 12,
+                        fontSize: "clamp(24px, 6vw, 28px)",
+                        opacity: 0.7
+                      }}
+                    >
+                      {agent.icon}
+                    </div>
+
+                    {/* タイトル */}
+                    <h2 style={{
+                      fontSize: "clamp(13px, 3vw, 15px)",
+                      fontWeight: 600,
+                      color: "var(--foreground)",
+                      marginBottom: 6,
+                      margin: 0,
+                      wordBreak: "keep-all",
+                      overflowWrap: "break-word",
+                      whiteSpace: "nowrap",
+                      opacity: 0.7
+                    }}>
+                      {agent.title}
+                    </h2>
+
+                    {/* 説明（1行のみ） */}
+                    <p style={{
+                      fontSize: "clamp(10px, 2vw, 11px)",
+                      color: "var(--text-secondary)",
+                      lineHeight: 1.3,
+                      margin: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      maxWidth: "100%",
+                      paddingLeft: 8,
+                      paddingRight: 8,
+                      opacity: 0.7
+                    }}>
+                      {agent.description}
+                    </p>
+                  </div>
+                );
+
+                return (
+                  <div
+                    key={agent.id}
+                    className="agent-card"
+                    style={{
+                      position: "relative",
+                      background: "var(--card-bg)",
+                      borderRadius: 12,
+                      padding: "clamp(16px, 4vw, 20px)",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.06)",
+                      border: "1px solid var(--card-border)",
+                      cursor: "not-allowed",
+                      opacity: 0.6,
+                      transition: "all 0.3s ease",
+                      animationDelay: `${index * 0.1}s`,
+                      overflow: "hidden",
+                      aspectRatio: "1 / 1",
+                      display: "flex",
+                      flexDirection: "column"
+                    }}
+                  >
+                    {cardContent}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ユーザー設定モーダル */}
         {showModal && (
