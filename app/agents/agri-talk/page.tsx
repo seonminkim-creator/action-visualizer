@@ -388,7 +388,7 @@ export default function AgriTalkAssistant() {
                         ? "2px solid #43e97b"
                         : "1px solid var(--card-border)",
                       background: selectedCategories.includes(cat.id)
-                        ? "#f0fdf4"
+                        ? "rgba(67, 233, 123, 0.15)"
                         : "var(--card-bg)",
                       cursor: "pointer",
                       transition: "all 0.2s",
@@ -412,7 +412,12 @@ export default function AgriTalkAssistant() {
                       style={{ cursor: "pointer" }}
                     />
                     <span>{cat.icon}</span>
-                    <span style={{ fontSize: 12, color: "var(--foreground)" }}>{cat.label}</span>
+                    <span style={{
+                      fontSize: 12,
+                      color: selectedCategories.includes(cat.id)
+                        ? "#43e97b"
+                        : "var(--foreground)"
+                    }}>{cat.label}</span>
                   </label>
                 ))}
               </div>
