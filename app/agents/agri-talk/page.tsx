@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Loader2, Sprout } from "lucide-react";
 import BackToHome from "../../components/BackToHome";
 import ReactMarkdown from "react-markdown";
