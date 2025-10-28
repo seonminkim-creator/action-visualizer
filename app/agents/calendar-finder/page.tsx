@@ -6,6 +6,12 @@ import { Period, Mode, DaySlots, Slot } from "../../types/calendar";
 import { getMockAvailability, periodLabels } from "../../lib/mockData";
 
 export default function CalendarFinder() {
+  // パスワード保護
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [password, setPassword] = useState("");
+  const [passwordError, setPasswordError] = useState(false);
+  const CORRECT_PASSWORD = "6501";
+
   const [selectedPeriod, setSelectedPeriod] = useState<Period | null>(null);
   const [mode, setMode] = useState<Mode>("visit");
   const [loading, setLoading] = useState(false);
@@ -449,6 +455,107 @@ export default function CalendarFinder() {
       alert("デフォルト設定に戻しました");
     }
   };
+
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === CORRECT_PASSWORD) {
+      setIsUnlocked(true);
+      setPasswordError(false);
+    } else {
+      setPasswordError(true);
+      setPassword("");
+    }
+  };
+
+  // パスワード入力画面
+  if (!isUnlocked) {
+    return (
+      <div style={{ minHeight: "100vh", padding: "16px", background: "var(--background)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ maxWidth: 400, width: "100%", textAlign: "center" }}>
+          <div style={{ marginBottom: 24 }}>
+            <BackToHome />
+          </div>
+          <div style={{
+            background: "var(--card-bg)",
+            padding: 40,
+            borderRadius: 12,
+            boxShadow: "0 4px 6px rgba(0,0,0,0.1)"
+          }}>
+            <div style={{
+              width: 64,
+              height: 64,
+              borderRadius: 12,
+              background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "white",
+              margin: "0 auto 16px",
+              fontSize: 32
+            }}>
+              <Calendar size={32} />
+            </div>
+            <h1 style={{
+              fontSize: 24,
+              fontWeight: 600,
+              margin: "0 0 8px 0",
+              color: "var(--foreground)",
+              textAlign: "center"
+            }}>
+              🔒 空き時間検索くん
+            </h1>
+            <p style={{ fontSize: 14, color: "var(--text-secondary)", textAlign: "center", marginBottom: 24 }}>
+              このページはパスワード保護されています
+            </p>
+            <form onSubmit={handlePasswordSubmit}>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setPasswordError(false);
+                }}
+                placeholder="パスワードを入力"
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  borderRadius: 8,
+                  border: passwordError ? "2px solid #ef4444" : "1px solid var(--card-border)",
+                  fontSize: 16,
+                  marginBottom: 16,
+                  boxSizing: "border-box",
+                  background: "var(--background)",
+                  color: "var(--foreground)"
+                }}
+                autoFocus
+              />
+              {passwordError && (
+                <p style={{ color: "#ef4444", fontSize: 14, marginTop: -8, marginBottom: 16 }}>
+                  パスワードが正しくありません
+                </p>
+              )}
+              <button
+                type="submit"
+                style={{
+                  width: "100%",
+                  padding: "12px 24px",
+                  borderRadius: 8,
+                  background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                  color: "white",
+                  border: "none",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  fontSize: 16
+                }}
+              >
+                ログイン
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100vh", padding: "16px", background: "var(--background)" }}>

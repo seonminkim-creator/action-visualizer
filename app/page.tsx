@@ -22,7 +22,7 @@ const agents: Agent[] = [
     icon: <Calendar size={32} />,
     path: "/agents/calendar-finder",
     gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-    status: "active"
+    status: "coming-soon"
   },
   {
     id: "agri-talk",
