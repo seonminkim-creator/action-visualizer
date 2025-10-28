@@ -61,10 +61,10 @@ function getDateRange(period: string): { start: Date; end: Date } {
 }
 
 // Busy時間からFree時間を計算
-function convertBusyToFree(busySlots: { start: string; end: string }[], date: Date, durationMin: number, isToday: boolean, currentTimeMin: number): Slot[] {
+function convertBusyToFree(busySlots: { start: string; end: string }[], date: Date, durationMin: number, isToday: boolean, currentTimeMin: number, workStartHour: number, workEndHour: number): Slot[] {
   const freeSlots: Slot[] = [];
-  const workStart = 9; // 9:00
-  const workEnd = 18; // 18:00
+  const workStart = workStartHour;
+  const workEnd = workEndHour;
 
   // Busy時間をソート
   const sortedBusy = busySlots.sort((a, b) => {
@@ -126,7 +126,7 @@ function getWeekday(date: Date): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const { period, durationMin = 60, ignoreKeywords = [] } = await request.json();
+    const { period, durationMin = 60, ignoreKeywords = [], workStartHour = 9, workEndHour = 18 } = await request.json();
 
     // クッキーからトークンを取得
     const accessToken = request.cookies.get("google_access_token")?.value;
@@ -214,7 +214,9 @@ export async function POST(request: NextRequest) {
           currentDate,
           durationMin,
           isToday,
-          currentTimeMin
+          currentTimeMin,
+          workStartHour,
+          workEndHour
         );
 
         days.push({

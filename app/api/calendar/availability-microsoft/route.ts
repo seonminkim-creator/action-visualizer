@@ -53,11 +53,13 @@ function convertBusyToFree(
   date: Date,
   durationMin: number,
   isToday: boolean,
-  currentTimeMin: number
+  currentTimeMin: number,
+  workStartHour: number,
+  workEndHour: number
 ): Slot[] {
   const freeSlots: Slot[] = [];
-  const workStart = 9; // 9:00
-  const workEnd = 18; // 18:00
+  const workStart = workStartHour;
+  const workEnd = workEndHour;
 
   const sortedBusy = busySlots.sort((a, b) => {
     const aTime = new Date(a.start).getTime();
@@ -122,7 +124,7 @@ function getWeekday(date: Date): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const { period, durationMin = 60, ignoreKeywords = [] } = await request.json();
+    const { period, durationMin = 60, ignoreKeywords = [], workStartHour = 9, workEndHour = 18 } = await request.json();
 
     // クッキーからMicrosoft access tokenを取得
     const accessToken = request.cookies.get("microsoft_access_token")?.value;
@@ -216,7 +218,7 @@ export async function POST(request: NextRequest) {
         const isToday = dateStr === todayStr;
 
         // Free時間を計算
-        const freeSlots = convertBusyToFree(dayBusy, currentDate, durationMin, isToday, currentTimeMin);
+        const freeSlots = convertBusyToFree(dayBusy, currentDate, durationMin, isToday, currentTimeMin, workStartHour, workEndHour);
 
         days.push({
           date: dateStr,

@@ -28,6 +28,9 @@ export default function CalendarFinder() {
   const [ignoreKeywords, setIgnoreKeywords] = useState("空き,調整可能");
   const [dateFormat, setDateFormat] = useState("yy/mm/dd（曜日）"); // 日付フォーマット
   const [maxCandidates, setMaxCandidates] = useState<number | null>(null); // 最大候補数（nullは全部）
+  const [showTodayAfternoon, setShowTodayAfternoon] = useState(true); // 午後以降も当日を表示するか
+  const [workStartHour, setWorkStartHour] = useState(9); // 営業開始時間
+  const [workEndHour, setWorkEndHour] = useState(18); // 営業終了時間
 
   // ページタイトルを設定
   useEffect(() => {
@@ -46,6 +49,9 @@ export default function CalendarFinder() {
   const DEFAULT_KEYWORDS = "空き,調整可能";
   const DEFAULT_DATE_FORMAT = "yy/mm/dd（曜日）";
   const DEFAULT_MAX_CANDIDATES = null; // デフォルトは全部
+  const DEFAULT_SHOW_TODAY_AFTERNOON = true; // デフォルトで当日も表示
+  const DEFAULT_WORK_START_HOUR = 9; // デフォルト営業開始時間
+  const DEFAULT_WORK_END_HOUR = 18; // デフォルト営業終了時間
 
   const periods: Period[] = ["this_week", "next_week", "next_next_week", "next_month"];
   const durations = [15, 30, 45, 60];
@@ -58,12 +64,18 @@ export default function CalendarFinder() {
     const savedKeywords = localStorage.getItem("ignoreKeywords");
     const savedDateFormat = localStorage.getItem("dateFormat");
     const savedMaxCandidates = localStorage.getItem("maxCandidates");
+    const savedShowTodayAfternoon = localStorage.getItem("showTodayAfternoon");
+    const savedWorkStartHour = localStorage.getItem("workStartHour");
+    const savedWorkEndHour = localStorage.getItem("workEndHour");
 
     if (savedSubject) setMailSubject(savedSubject);
     if (savedBody) setMailBody(savedBody);
     if (savedKeywords) setIgnoreKeywords(savedKeywords);
     if (savedDateFormat) setDateFormat(savedDateFormat);
     if (savedMaxCandidates) setMaxCandidates(savedMaxCandidates === "null" ? null : Number(savedMaxCandidates));
+    if (savedShowTodayAfternoon !== null) setShowTodayAfternoon(savedShowTodayAfternoon === "true");
+    if (savedWorkStartHour) setWorkStartHour(Number(savedWorkStartHour));
+    if (savedWorkEndHour) setWorkEndHour(Number(savedWorkEndHour));
 
     const params = new URLSearchParams(window.location.search);
     if (params.get("authenticated") === "true") {
@@ -130,6 +142,8 @@ export default function CalendarFinder() {
           period,
           durationMin,
           ignoreKeywords: ignoreKeywords.split(",").map(k => k.trim()).filter(k => k),
+          workStartHour,
+          workEndHour,
         }),
       });
 
@@ -204,8 +218,8 @@ export default function CalendarFinder() {
 
     return result
       .map(day => {
-        // 当日かつ午後以降（12時以降）の場合はスキップ
-        if (day.date === todayStr && currentHour >= 12) {
+        // 設定により、当日かつ午後以降（12時以降）の場合はスキップ
+        if (!showTodayAfternoon && day.date === todayStr && currentHour >= 12) {
           return null;
         }
 
@@ -342,6 +356,9 @@ export default function CalendarFinder() {
       localStorage.setItem("ignoreKeywords", ignoreKeywords);
       localStorage.setItem("dateFormat", dateFormat);
       localStorage.setItem("maxCandidates", maxCandidates === null ? "null" : String(maxCandidates));
+      localStorage.setItem("showTodayAfternoon", String(showTodayAfternoon));
+      localStorage.setItem("workStartHour", String(workStartHour));
+      localStorage.setItem("workEndHour", String(workEndHour));
       setShowSettings(false);
       alert("設定を保存しました");
     }
@@ -354,6 +371,9 @@ export default function CalendarFinder() {
       setIgnoreKeywords(DEFAULT_KEYWORDS);
       setDateFormat(DEFAULT_DATE_FORMAT);
       setMaxCandidates(DEFAULT_MAX_CANDIDATES);
+      setShowTodayAfternoon(DEFAULT_SHOW_TODAY_AFTERNOON);
+      setWorkStartHour(DEFAULT_WORK_START_HOUR);
+      setWorkEndHour(DEFAULT_WORK_END_HOUR);
       alert("デフォルト設定に戻しました");
     }
   };
@@ -1037,7 +1057,7 @@ export default function CalendarFinder() {
                 </p>
               </div>
 
-              <div style={{ marginBottom: 24 }}>
+              <div style={{ marginBottom: 16 }}>
                 <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
                   メール本文に表示する候補数
                 </label>
@@ -1060,6 +1080,65 @@ export default function CalendarFinder() {
                 </select>
                 <p style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
                   メールに含める候補日の最大数を制限できます
+                </p>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={showTodayAfternoon}
+                    onChange={(e) => setShowTodayAfternoon(e.target.checked)}
+                    style={{ width: 18, height: 18, cursor: "pointer" }}
+                  />
+                  午後以降も当日の予定を表示する
+                </label>
+                <p style={{ fontSize: 12, color: "#64748b", marginTop: 4, marginLeft: 26 }}>
+                  オフにすると、12時以降は当日の候補を表示しません
+                </p>
+              </div>
+
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
+                  営業時間
+                </label>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <select
+                    value={workStartHour}
+                    onChange={(e) => setWorkStartHour(Number(e.target.value))}
+                    style={{
+                      flex: 1,
+                      padding: "8px 12px",
+                      borderRadius: 6,
+                      border: "1px solid #e5e7eb",
+                      fontSize: 14,
+                      background: "white"
+                    }}
+                  >
+                    {Array.from({ length: 24 }, (_, i) => (
+                      <option key={i} value={i}>{String(i).padStart(2, "0")}:00</option>
+                    ))}
+                  </select>
+                  <span style={{ fontSize: 14, color: "#64748b" }}>〜</span>
+                  <select
+                    value={workEndHour}
+                    onChange={(e) => setWorkEndHour(Number(e.target.value))}
+                    style={{
+                      flex: 1,
+                      padding: "8px 12px",
+                      borderRadius: 6,
+                      border: "1px solid #e5e7eb",
+                      fontSize: 14,
+                      background: "white"
+                    }}
+                  >
+                    {Array.from({ length: 24 }, (_, i) => (
+                      <option key={i} value={i}>{String(i).padStart(2, "0")}:00</option>
+                    ))}
+                  </select>
+                </div>
+                <p style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                  空き時間として表示する時間帯を設定できます
                 </p>
               </div>
 
