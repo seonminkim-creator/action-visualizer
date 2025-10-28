@@ -240,16 +240,18 @@ export default function Home() {
                 {/* タイトルと説明 */}
                 <div style={{ paddingRight: isActive ? 40 : 0 }}>
                   <h2 style={{
-                    fontSize: 20,
+                    fontSize: "clamp(16px, 4vw, 20px)",
                     fontWeight: 600,
                     color: "#0f172a",
                     marginBottom: 8,
-                    margin: 0
+                    margin: 0,
+                    wordBreak: "keep-all",
+                    overflowWrap: "break-word"
                   }}>
                     {agent.title}
                   </h2>
                   <p style={{
-                    fontSize: 14,
+                    fontSize: "clamp(12px, 3vw, 14px)",
                     color: "#64748b",
                     lineHeight: 1.6,
                     margin: 0
@@ -278,7 +280,7 @@ export default function Home() {
               position: "relative" as const,
               background: "white",
               borderRadius: 16,
-              padding: 24,
+              padding: "clamp(16px, 4vw, 24px)",
               boxShadow: "0 4px 6px rgba(0,0,0,0.07)",
               border: "1px solid #e5e7eb",
               textDecoration: "none",
@@ -507,9 +509,17 @@ export default function Home() {
           <p style={{
             fontSize: 12,
             color: "#94a3b8",
-            margin: 0
+            margin: 0,
+            marginBottom: 8
           }}>
             営業AIポータル - 営業活動をアシスタントする専門AIエージェント
+          </p>
+          <p style={{
+            fontSize: 11,
+            color: "#94a3b8",
+            margin: 0
+          }}>
+            © 2025 株式会社PECO. All rights reserved.
           </p>
         </div>
       </div>

@@ -28,6 +28,11 @@ export default function CalendarFinder() {
   const [dateFormat, setDateFormat] = useState("yy/mm/dd（曜日）"); // 日付フォーマット
   const [maxCandidates, setMaxCandidates] = useState<number | null>(null); // 最大候補数（nullは全部）
 
+  // ページタイトルを設定
+  useEffect(() => {
+    document.title = "空き時間検索くん | 営業AIポータル";
+  }, []);
+
   // デフォルト設定
   const DEFAULT_SUBJECT = "打合せ候補日のご提案（{期間}）";
   const DEFAULT_BODY = `＜候補日＞

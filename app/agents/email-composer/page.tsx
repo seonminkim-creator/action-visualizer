@@ -30,6 +30,11 @@ export default function EmailComposer() {
   const [userName, setUserName] = useState<string>("");
   const [companyName, setCompanyName] = useState<string>("");
 
+  // ページタイトルを設定
+  useEffect(() => {
+    document.title = "メール返信叩きくん | 営業AIポータル";
+  }, []);
+
   // localStorage から文体プロファイルとユーザー設定を読み込み
   useEffect(() => {
     const savedProfile = localStorage.getItem("emailStyleProfile");

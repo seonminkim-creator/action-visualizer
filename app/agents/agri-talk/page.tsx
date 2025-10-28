@@ -28,6 +28,11 @@ export default function AgriTalkAssistant() {
   const [processingTime, setProcessingTime] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
 
+  // ページタイトルを設定
+  useEffect(() => {
+    document.title = "話題提案くん | 営業AIポータル";
+  }, []);
+
   async function searchTopics(): Promise<void> {
     if (!region.trim()) {
       setError("訪問地域を入力してください");

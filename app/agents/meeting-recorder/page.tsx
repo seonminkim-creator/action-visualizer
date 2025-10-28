@@ -24,6 +24,11 @@ export default function MeetingRecorder() {
   const [processingStage, setProcessingStage] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
+
+  // ページタイトルを設定
+  useEffect(() => {
+    document.title = "会議まとめくん | 営業AIポータル";
+  }, []);
   const [processingTime, setProcessingTime] = useState<string | null>(null);
   const [result, setResult] = useState<MeetingSummary | null>(null);
   const [isRecording, setIsRecording] = useState<boolean>(false);
