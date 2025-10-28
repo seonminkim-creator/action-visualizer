@@ -329,7 +329,7 @@ export default function EmailComposer() {
                 paddingLeft: 8,
               }}
             >
-              相手のメールや状況を入力 → タスク選択（返信・新規作成） → <strong>ビジネスメール文を出力</strong>
+              相手のメールや状況を入力 → タスク選択（返信・新規作成）→ 伝えたい内容を簡単に入力 → <strong>指示にあったビジネスメール文を出力</strong>
             </div>
           </div>
         )}
