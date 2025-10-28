@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Loader2, Mail, Copy, Check, RotateCcw, Settings, Brain, Trash2 } from "lucide-react";
 import BackToHome from "../../components/BackToHome";
 
-type TaskType = "reply" | "compose" | "revise";
+type TaskType = "reply" | "compose";
 type Tab = "composer" | "settings";
 
 export default function EmailComposer() {
@@ -11,8 +11,6 @@ export default function EmailComposer() {
   const [taskType, setTaskType] = useState<TaskType>("reply");
   const [inputText, setInputText] = useState<string>("");
   const [additionalInfo, setAdditionalInfo] = useState<string>("");
-  const [useCalendar, setUseCalendar] = useState<boolean>(false); // カレンダー連携フラグ
-  const [calendarAuthenticated, setCalendarAuthenticated] = useState<boolean>(false); // カレンダー認証状態
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
@@ -81,50 +79,6 @@ export default function EmailComposer() {
     setResult(null);
 
     try {
-      // カレンダー連携が有効な場合、空き時間を取得
-      let availabilityText: string | undefined = undefined;
-      if (useCalendar) {
-        try {
-          // 今日から7日間の空き時間を取得
-          const today = new Date();
-          const endDate = new Date(today);
-          endDate.setDate(endDate.getDate() + 7);
-
-          const availResponse = await fetch("/api/calendar/availability", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              startDate: today.toISOString().split("T")[0],
-              endDate: endDate.toISOString().split("T")[0],
-              startTime: "09:00",
-              endTime: "18:00",
-              excludeWeekends: true,
-              excludeHolidays: true,
-            }),
-          });
-
-          if (availResponse.ok) {
-            const availData = await availResponse.json();
-            // 空き時間を整形
-            const slots: string[] = [];
-            availData.availability.forEach((day: any) => {
-              if (day.slots && day.slots.length > 0 && !day.isHoliday) {
-                const dateStr = `${day.date}(${day.weekday})`;
-                day.slots.slice(0, 2).forEach((slot: any) => {
-                  slots.push(`${dateStr} ${slot.start}〜${slot.end}`);
-                });
-              }
-            });
-            if (slots.length > 0) {
-              availabilityText = slots.slice(0, 5).join("、");
-            }
-          }
-        } catch (err) {
-          console.error("空き時間取得エラー:", err);
-          // エラーが発生してもメール生成は続行
-        }
-      }
-
       const res = await fetch("/api/email-composer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -133,7 +87,6 @@ export default function EmailComposer() {
           inputText: inputText.trim(),
           additionalInfo: additionalInfo.trim(),
           styleProfile: styleProfile || undefined, // 学習した文体を送信
-          availability: availabilityText, // 空き時間情報を追加
           userName: userName.trim() || undefined, // ユーザー名
           companyName: companyName.trim() || undefined, // 会社名
         }),
@@ -288,19 +241,16 @@ export default function EmailComposer() {
   const taskTypeLabels = {
     reply: "返信作成",
     compose: "新規作成",
-    revise: "添削",
   };
 
   const taskTypePlaceholders = {
     reply: "受信したメール内容を貼り付けてください...",
     compose: "作成したいメールの要件を入力してください（例：新商品の案内、価格改定のお知らせ）",
-    revise: "添削したいメール文を貼り付けてください...",
   };
 
   const additionalInfoPlaceholders = {
     reply: "返信内容の指示があれば入力してください（例：来週火曜日に訪問したい旨を伝える）",
     compose: "補足情報があれば入力してください（例：送付先はJA担当者、カジュアルなトーンで）",
-    revise: "添削の指示があれば入力してください（例：もう少しカジュアルに、丁寧すぎる表現を減らす）",
   };
 
   return (
@@ -359,7 +309,7 @@ export default function EmailComposer() {
           <p style={{ color: "var(--text-secondary)", fontSize: 14, margin: 0, paddingLeft: 60 }}>
             {loading
               ? "メール文を生成中...（最大60秒程度かかる場合があります）"
-              : "メールの作成・返信・添削"}
+              : "メールの作成・返信"}
           </p>
         </div>
 
@@ -393,7 +343,7 @@ export default function EmailComposer() {
                 paddingLeft: 8,
               }}
             >
-              相手のメールや状況を入力 → タスク選択（返信・新規作成・添削） → <strong>ビジネスメール文を出力</strong>
+              相手のメールや状況を入力 → タスク選択（返信・新規作成） → <strong>ビジネスメール文を出力</strong>
             </div>
           </div>
         )}
@@ -487,7 +437,7 @@ export default function EmailComposer() {
                 タスクを選択
               </label>
               <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-                {(["reply", "compose", "revise"] as TaskType[]).map((type) => (
+                {(["reply", "compose"] as TaskType[]).map((type) => (
                   <button
                     key={type}
                     onClick={() => setTaskType(type)}
@@ -520,9 +470,7 @@ export default function EmailComposer() {
               >
                 {taskType === "reply"
                   ? "受信メール"
-                  : taskType === "compose"
-                  ? "作成要件"
-                  : "添削対象メール"}
+                  : "作成要件"}
               </label>
               <textarea
                 value={inputText}
@@ -573,50 +521,7 @@ export default function EmailComposer() {
                 }}
               />
 
-              {/* カレンダー連携チェックボックス */}
-              <div style={{ marginTop: 12, marginBottom: 12 }}>
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    cursor: calendarAuthenticated ? "pointer" : "not-allowed",
-                    fontSize: 14,
-                    color: calendarAuthenticated ? "var(--foreground)" : "var(--text-tertiary)",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={useCalendar}
-                    onChange={(e) => setUseCalendar(e.target.checked)}
-                    disabled={!calendarAuthenticated}
-                    style={{ cursor: calendarAuthenticated ? "pointer" : "not-allowed" }}
-                  />
-                  <span>📅 カレンダー連携（空き時間を自動提案）</span>
-                  {!calendarAuthenticated && (
-                    <span style={{ fontSize: 12, color: "#dc2626" }}>
-                      ※ カレンダー認証が必要です
-                    </span>
-                  )}
-                </label>
-                {useCalendar && calendarAuthenticated && (
-                  <div
-                    style={{
-                      marginTop: 6,
-                      padding: "8px 12px",
-                      background: "#f0fdf4",
-                      border: "1px solid #86efac",
-                      borderRadius: 6,
-                      fontSize: 12,
-                      color: "#166534",
-                    }}
-                  >
-                    ✓ 今後7日間の空き時間を自動的にメールに含めます
-                  </div>
-                )}
-              </div>
-
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
                 <button
                   onClick={generateEmail}
                   disabled={loading || !inputText.trim()}
@@ -1079,7 +984,7 @@ export default function EmailComposer() {
             textAlign: "center",
           }}
         >
-          メール返信叩きくん - ビジネスメールの作成・返信・添削アシスタント
+          メール返信叩きくん - ビジネスメールの作成・返信アシスタント
         </p>
       </div>
     </div>
