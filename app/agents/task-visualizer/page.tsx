@@ -134,22 +134,22 @@ export default function ActionVisualizer() {
   // パスワード認証画面
   if (!isAuthenticated) {
     return (
-      <div style={{ minHeight: "100vh", padding: "16px", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ minHeight: "100vh", padding: "16px", background: "var(--background)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ margin: "0 auto", maxWidth: 400, width: "100%" }}>
           <div style={{ marginBottom: 16 }}>
             <BackToHome />
           </div>
-          <div style={{ background: "white", borderRadius: 12, padding: 32, boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
+          <div style={{ background: "var(--card-bg)", borderRadius: 12, padding: 32, boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
             <h1 style={{
               fontSize: 24,
               fontWeight: 600,
               margin: "0 0 8px 0",
-              color: "#0f172a",
+              color: "var(--foreground)",
               textAlign: "center"
             }}>
               🔒 タスク整理くん
             </h1>
-            <p style={{ fontSize: 14, color: "#64748b", textAlign: "center", marginBottom: 24 }}>
+            <p style={{ fontSize: 14, color: "var(--text-secondary)", textAlign: "center", marginBottom: 24 }}>
               このページはパスワード保護されています
             </p>
             <form onSubmit={handlePasswordSubmit}>
@@ -162,10 +162,12 @@ export default function ActionVisualizer() {
                   width: "100%",
                   padding: 12,
                   borderRadius: 8,
-                  border: "1px solid #d1d5db",
+                  border: "1px solid var(--card-border)",
                   fontSize: 14,
                   marginBottom: 12,
-                  boxSizing: "border-box"
+                  boxSizing: "border-box",
+                  background: "var(--background)",
+                  color: "var(--foreground)"
                 }}
               />
               {passwordError && (
@@ -197,7 +199,7 @@ export default function ActionVisualizer() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", padding: "16px", background: "#f8fafc" }}>
+    <div style={{ minHeight: "100vh", padding: "16px", background: "var(--background)" }}>
       <style>{`
         @keyframes spin {
           from { transform: rotate(0deg); }
@@ -207,7 +209,7 @@ export default function ActionVisualizer() {
           .container { padding: 32px; }
         }
         input::placeholder, textarea::placeholder {
-          color: #94a3b8;
+          color: var(--text-tertiary);
           opacity: 1;
         }
       `}</style>
@@ -230,25 +232,26 @@ export default function ActionVisualizer() {
               タスク整理くん 👀
             </h1>
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
-              <label style={{ fontSize: 12, color: "#475569", whiteSpace: "nowrap" }}>名前:</label>
+              <label style={{ fontSize: 12, color: "var(--text-secondary)", whiteSpace: "nowrap" }}>名前:</label>
               <input
                 type="text"
                 value={userName}
                 onChange={(e) => setUserName(e.target.value)}
                 placeholder="例: 田中"
-                style={{ 
-                  padding: "6px 10px", 
-                  borderRadius: 6, 
-                  border: "1px solid #d1d5db", 
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 6,
+                  border: "1px solid var(--card-border)",
                   fontSize: 12,
                   width: "100px",
                   maxWidth: "120px",
-                  background: "white"
+                  background: "var(--background)",
+                  color: "var(--foreground)"
                 }}
               />
             </div>
           </div>
-          <p style={{ color: "#475569", fontSize: 13, margin: 0 }}>
+          <p style={{ color: "var(--text-secondary)", fontSize: 13, margin: 0 }}>
             {loading ? "タスクを整理中です…" : "文章を貼り付けて、今やるべきことを見える化"}
           </p>
         </div>
@@ -256,23 +259,23 @@ export default function ActionVisualizer() {
         {/* 利用シーン説明 */}
         {!result && !loading && (
           <div style={{
-            background: "white",
+            background: "var(--card-bg)",
             borderRadius: 8,
             padding: "12px 16px",
             marginBottom: 12,
-            border: "1px solid #e5e7eb"
+            border: "1px solid var(--card-border)"
           }}>
             <div style={{
               fontSize: 12,
-              color: "#64748b",
+              color: "var(--text-secondary)",
               lineHeight: 1.7
             }}>
               <div style={{ marginBottom: 6 }}>
-                <span style={{ fontWeight: 600, color: "#475569" }}>📧 顧客メール</span>
+                <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>📧 顧客メール</span>
                 　依頼内容と期日を抜き出し、やるべきことを教えてくれる
               </div>
               <div>
-                <span style={{ fontWeight: 600, color: "#475569" }}>💬 上司の指示</span>
+                <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>💬 上司の指示</span>
                 　長文チャットから要点と期限を整理、確認事項を可視化
               </div>
             </div>
@@ -284,16 +287,16 @@ export default function ActionVisualizer() {
             placeholder="ここに文章を貼り付け（メール、議事録など）"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            style={{ 
-              minHeight: 150, 
-              padding: 12, 
-              borderRadius: 8, 
-              border: "1px solid #d1d5db", 
-              fontSize: 14, 
-              width: "100%", 
+            style={{
+              minHeight: 150,
+              padding: 12,
+              borderRadius: 8,
+              border: "1px solid var(--card-border)",
+              fontSize: 14,
+              width: "100%",
               boxSizing: "border-box",
-              background: "white",
-              color: "#1e293b"
+              background: "var(--background)",
+              color: "var(--foreground)"
             }}
           />
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -303,7 +306,7 @@ export default function ActionVisualizer() {
               style={{
                 padding: "10px 14px",
                 borderRadius: 8,
-                background: loading || !input.trim() ? "#94a3b8" : "#0f172a",
+                background: loading || !input.trim() ? "var(--text-tertiary)" : "var(--foreground)",
                 color: "white",
                 border: "none",
                 cursor: loading || !input.trim() ? "not-allowed" : "pointer",
@@ -322,7 +325,7 @@ export default function ActionVisualizer() {
               disabled={loading}
               style={{
                 fontSize: 13,
-                color: "#475569",
+                color: "var(--text-secondary)",
                 background: "transparent",
                 border: "none",
                 cursor: loading ? "not-allowed" : "pointer",
@@ -336,7 +339,7 @@ export default function ActionVisualizer() {
               style={{
                 marginLeft: "auto",
                 fontSize: 13,
-                color: "#1e293b",
+                color: "var(--foreground)",
                 background: "transparent",
                 border: "none",
                 cursor: "pointer",
@@ -375,17 +378,17 @@ export default function ActionVisualizer() {
 
         {isAnalyzeResult(result) && !loading && (
           <>
-            <div style={{ background: "white", borderRadius: 8, padding: "16px", marginTop: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-              <div style={{ fontSize: 13, marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid #e5e7eb", wordBreak: "break-word" }}>
-                <span style={{ fontWeight: 600, color: "#0f172a" }}>要約：</span>
-                <span style={{ color: "#1e293b" }}>{result.summary}</span>
+            <div style={{ background: "var(--card-bg)", borderRadius: 8, padding: "16px", marginTop: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+              <div style={{ fontSize: 13, marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid var(--card-border)", wordBreak: "break-word" }}>
+                <span style={{ fontWeight: 600, color: "var(--foreground)" }}>要約：</span>
+                <span style={{ color: "var(--foreground)" }}>{result.summary}</span>
               </div>
               <div style={{ display: "grid", gap: 16 }}>
                 <section>
-                  <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 10, color: "#0f172a" }}>📋 依頼内容</h2>
+                  <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 10, color: "var(--foreground)" }}>📋 依頼内容</h2>
                   <ul style={{ paddingLeft: 20, margin: 0 }}>
                     {result.explicit_points.map((s, i) => (
-                      <li key={i} style={{ marginBottom: 8, fontSize: 13, color: "#334155", wordBreak: "break-word" }}>
+                      <li key={i} style={{ marginBottom: 8, fontSize: 13, color: "var(--foreground)", wordBreak: "break-word" }}>
                         {String(s)}
                       </li>
                     ))}
@@ -393,13 +396,13 @@ export default function ActionVisualizer() {
                 </section>
                 <section>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 8, flexWrap: "wrap" }}>
-                    <h2 style={{ fontSize: 15, fontWeight: 600, color: "#0f172a", margin: 0 }}>🎯 対応タスク</h2>
+                    <h2 style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>🎯 対応タスク</h2>
                     {result.inferred_actions.filter(item => item.priority !== "high").length > 0 && (
                       <button
                         onClick={() => setShowAllTasks(!showAllTasks)}
                         style={{
                           fontSize: 11,
-                          color: "#475569",
+                          color: "var(--text-secondary)",
                           background: "transparent",
                           border: "none",
                           cursor: "pointer",
@@ -426,9 +429,9 @@ export default function ActionVisualizer() {
                         };
                         const priority = priorityColors[item.priority];
                         const isMyTask = item.assignee === userName || item.assignee === "あなた";
-                        const assigneeColor = isMyTask ? "#10b981" : "#64748b";
+                        const assigneeColor = isMyTask ? "#10b981" : "var(--text-secondary)";
                         return (
-                          <li key={i} style={{ marginBottom: 10, fontSize: 13, color: "#334155", display: "flex", alignItems: "flex-start", gap: 6, flexWrap: "wrap" }}>
+                          <li key={i} style={{ marginBottom: 10, fontSize: 13, color: "var(--foreground)", display: "flex", alignItems: "flex-start", gap: 6, flexWrap: "wrap" }}>
                             <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
                               <span style={{ 
                                 display: "inline-block",
@@ -444,14 +447,14 @@ export default function ActionVisualizer() {
                               }}>
                                 {priority.label}
                               </span>
-                              <span style={{ 
+                              <span style={{
                                 display: "inline-block",
                                 padding: "2px 6px",
                                 borderRadius: 4,
                                 fontSize: 10,
                                 fontWeight: 500,
-                                background: isMyTask ? "#ecfdf5" : "#f1f5f9",
-                                border: `1px solid ${isMyTask ? "#86efac" : "#cbd5e1"}`,
+                                background: isMyTask ? "#ecfdf5" : "var(--card-bg)",
+                                border: `1px solid ${isMyTask ? "#86efac" : "var(--card-border)"}`,
                                 color: assigneeColor,
                                 maxWidth: "80px",
                                 overflow: "hidden",
@@ -470,9 +473,9 @@ export default function ActionVisualizer() {
               </div>
             </div>
 
-            <div style={{ background: "white", borderRadius: 8, padding: "16px", marginTop: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-              <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12, color: "#0f172a" }}>📝 詳細解説</h2>
-              <p style={{ fontSize: 13, color: "#334155", lineHeight: 1.7, margin: 0, wordBreak: "break-word" }}>
+            <div style={{ background: "var(--card-bg)", borderRadius: 8, padding: "16px", marginTop: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
+              <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12, color: "var(--foreground)" }}>📝 詳細解説</h2>
+              <p style={{ fontSize: 13, color: "var(--foreground)", lineHeight: 1.7, margin: 0, wordBreak: "break-word" }}>
                 {result.detailed_analysis}
               </p>
             </div>
@@ -481,31 +484,31 @@ export default function ActionVisualizer() {
 
         {historyOpen && history.length > 0 && (
           <div style={{ marginTop: 20 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 600, color: "#1e293b", marginBottom: 10 }}>📜 過去のみえーる化</h3>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", marginBottom: 10 }}>📜 過去のみえーる化</h3>
             <ul style={{ display: "grid", gap: 10, listStyle: "none", padding: 0 }}>
               {history.map((h) => (
                 <li
                   key={h.id}
                   style={{
-                    background: "white",
-                    border: "1px solid #e5e7eb",
+                    background: "var(--card-bg)",
+                    border: "1px solid var(--card-border)",
                     borderRadius: 8,
                     padding: 12,
                     cursor: "pointer",
                     transition: "all 0.2s",
                     position: "relative"
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
-                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#e5e7eb")}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--card-border)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--card-border)")}
                   onClick={() => {
                     setInput(String(h.input));
                     setResult(h.result);
                   }}
                 >
-                  <div style={{ fontSize: 11, color: "#64748b", marginBottom: 6, paddingRight: 30 }}>
+                  <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 6, paddingRight: 30 }}>
                     {new Date(h.at).toLocaleString("ja-JP")}
                   </div>
-                  <div style={{ fontSize: 13, color: "#1e293b", paddingRight: 30 }}>
+                  <div style={{ fontSize: 13, color: "var(--foreground)", paddingRight: 30 }}>
                     {String(h.input).slice(0, 120)}
                     {String(h.input).length > 120 ? "…" : ""}
                   </div>
@@ -539,7 +542,7 @@ export default function ActionVisualizer() {
           </div>
         )}
 
-        <p style={{ marginTop: 20, fontSize: 11, color: "#64748b", textAlign: "center" }}>
+        <p style={{ marginTop: 20, fontSize: 11, color: "var(--text-secondary)", textAlign: "center" }}>
           タスク整理くん - やるべきことを可視化
         </p>
       </div>

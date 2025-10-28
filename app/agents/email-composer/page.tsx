@@ -304,7 +304,7 @@ export default function EmailComposer() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", padding: "16px", background: "#f8fafc" }}>
+    <div style={{ minHeight: "100vh", padding: "16px", background: "var(--background)" }}>
       <div style={{ margin: "0 auto", maxWidth: 960 }}>
         <div style={{ marginBottom: 16 }}>
           <BackToHome />
@@ -355,7 +355,7 @@ export default function EmailComposer() {
               </span>
             )}
           </div>
-          <p style={{ color: "#64748b", fontSize: 14, margin: 0, paddingLeft: 60 }}>
+          <p style={{ color: "var(--text-secondary)", fontSize: 14, margin: 0, paddingLeft: 60 }}>
             {loading
               ? "メール文を生成中...（最大60秒程度かかる場合があります）"
               : "メールの作成・返信・添削"}
@@ -363,7 +363,7 @@ export default function EmailComposer() {
         </div>
 
         {/* タブ */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 16, borderBottom: "2px solid #e5e7eb" }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 16, borderBottom: "2px solid var(--card-border)" }}>
           <button
             onClick={() => setActiveTab("composer")}
             style={{
@@ -371,7 +371,7 @@ export default function EmailComposer() {
               background: "transparent",
               border: "none",
               borderBottom: activeTab === "composer" ? "2px solid #667eea" : "2px solid transparent",
-              color: activeTab === "composer" ? "#667eea" : "#64748b",
+              color: activeTab === "composer" ? "#667eea" : "var(--text-secondary)",
               fontWeight: 600,
               cursor: "pointer",
               fontSize: 14,
@@ -391,7 +391,7 @@ export default function EmailComposer() {
               background: "transparent",
               border: "none",
               borderBottom: activeTab === "settings" ? "2px solid #667eea" : "2px solid transparent",
-              color: activeTab === "settings" ? "#667eea" : "#64748b",
+              color: activeTab === "settings" ? "#667eea" : "var(--text-secondary)",
               fontWeight: 600,
               cursor: "pointer",
               fontSize: 14,
@@ -413,16 +413,16 @@ export default function EmailComposer() {
             {!result && !loading && (
               <div
                 style={{
-                  background: "white",
+                  background: "var(--card-bg)",
                   borderRadius: 8,
                   padding: "12px 16px",
                   marginBottom: 16,
-                  border: "1px solid #e5e7eb",
+                  border: "1px solid var(--card-border)",
                 }}
               >
-                <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.7 }}>
+                <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.7 }}>
                   <div style={{ marginBottom: 6 }}>
-                    <span style={{ fontWeight: 600, color: "#475569" }}>📋 使い方</span>
+                    <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>📋 使い方</span>
                     　タスクを選択して、メール内容や要件を入力してください
                   </div>
                 </div>
@@ -431,7 +431,7 @@ export default function EmailComposer() {
 
             <div
               style={{
-                background: "white",
+                background: "var(--card-bg)",
                 borderRadius: 12,
                 padding: 20,
                 marginBottom: 16,
@@ -444,7 +444,7 @@ export default function EmailComposer() {
                   display: "block",
                   fontSize: 14,
                   fontWeight: 600,
-                  color: "#0f172a",
+                  color: "var(--foreground)",
                   marginBottom: 12,
                 }}
               >
@@ -459,9 +459,9 @@ export default function EmailComposer() {
                       flex: 1,
                       padding: "10px 16px",
                       borderRadius: 8,
-                      background: taskType === type ? "#667eea" : "white",
-                      color: taskType === type ? "white" : "#475569",
-                      border: `2px solid ${taskType === type ? "#667eea" : "#e5e7eb"}`,
+                      background: taskType === type ? "#667eea" : "var(--card-bg)",
+                      color: taskType === type ? "white" : "var(--text-secondary)",
+                      border: `2px solid ${taskType === type ? "#667eea" : "var(--card-border)"}`,
                       cursor: "pointer",
                       fontWeight: 600,
                       fontSize: 13,
@@ -478,7 +478,7 @@ export default function EmailComposer() {
                   display: "block",
                   fontSize: 14,
                   fontWeight: 600,
-                  color: "#0f172a",
+                  color: "var(--foreground)",
                   marginBottom: 8,
                 }}
               >
@@ -497,7 +497,9 @@ export default function EmailComposer() {
                   minHeight: 200,
                   padding: 12,
                   borderRadius: 8,
-                  border: "1px solid #d1d5db",
+                  border: "1px solid var(--card-border)",
+                  background: "var(--background)",
+                  color: "var(--foreground)",
                   fontSize: 14,
                   boxSizing: "border-box",
                   resize: "vertical",
@@ -511,7 +513,7 @@ export default function EmailComposer() {
                   display: "block",
                   fontSize: 14,
                   fontWeight: 600,
-                  color: "#0f172a",
+                  color: "var(--foreground)",
                   marginBottom: 8,
                 }}
               >
@@ -526,7 +528,9 @@ export default function EmailComposer() {
                   minHeight: 100,
                   padding: 12,
                   borderRadius: 8,
-                  border: "1px solid #d1d5db",
+                  border: "1px solid var(--card-border)",
+                  background: "var(--background)",
+                  color: "var(--foreground)",
                   fontSize: 14,
                   boxSizing: "border-box",
                   resize: "vertical",
@@ -542,7 +546,7 @@ export default function EmailComposer() {
                     gap: 8,
                     cursor: calendarAuthenticated ? "pointer" : "not-allowed",
                     fontSize: 14,
-                    color: calendarAuthenticated ? "#0f172a" : "#94a3b8",
+                    color: calendarAuthenticated ? "var(--foreground)" : "var(--text-tertiary)",
                   }}
                 >
                   <input
@@ -585,7 +589,7 @@ export default function EmailComposer() {
                     borderRadius: 8,
                     background:
                       loading || !inputText.trim()
-                        ? "#94a3b8"
+                        ? "var(--text-tertiary)"
                         : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                     color: "white",
                     border: "none",
@@ -616,9 +620,9 @@ export default function EmailComposer() {
                   style={{
                     padding: "10px 20px",
                     borderRadius: 8,
-                    background: "white",
-                    color: "#475569",
-                    border: "1px solid #e5e7eb",
+                    background: "var(--card-bg)",
+                    color: "var(--text-secondary)",
+                    border: "1px solid var(--card-border)",
                     cursor: loading ? "not-allowed" : "pointer",
                     fontWeight: 600,
                     display: "flex",
@@ -662,7 +666,7 @@ export default function EmailComposer() {
             {result && !loading && (
               <div
                 style={{
-                  background: "white",
+                  background: "var(--card-bg)",
                   borderRadius: 12,
                   padding: 20,
                   boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
@@ -675,14 +679,14 @@ export default function EmailComposer() {
                     alignItems: "center",
                     marginBottom: 16,
                     paddingBottom: 8,
-                    borderBottom: "2px solid #e5e7eb",
+                    borderBottom: "2px solid var(--card-border)",
                   }}
                 >
                   <h2
                     style={{
                       fontSize: 18,
                       fontWeight: 600,
-                      color: "#0f172a",
+                      color: "var(--foreground)",
                       margin: 0,
                     }}
                   >
@@ -693,9 +697,9 @@ export default function EmailComposer() {
                     style={{
                       padding: "6px 12px",
                       borderRadius: 6,
-                      background: copied ? "#10b981" : "white",
-                      color: copied ? "white" : "#475569",
-                      border: "1px solid #e5e7eb",
+                      background: copied ? "#10b981" : "var(--card-bg)",
+                      color: copied ? "white" : "var(--text-secondary)",
+                      border: "1px solid var(--card-border)",
                       cursor: "pointer",
                       fontSize: 13,
                       fontWeight: 500,
@@ -721,13 +725,13 @@ export default function EmailComposer() {
                 <div
                   style={{
                     fontSize: 14,
-                    color: "#334155",
+                    color: "var(--foreground)",
                     lineHeight: 1.8,
                     whiteSpace: "pre-wrap",
-                    background: "#f8fafc",
+                    background: "var(--background)",
                     padding: 16,
                     borderRadius: 8,
-                    border: "1px solid #e5e7eb",
+                    border: "1px solid var(--card-border)",
                   }}
                 >
                   {result}
@@ -743,7 +747,7 @@ export default function EmailComposer() {
             {/* ユーザー設定セクション */}
             <div
               style={{
-                background: "white",
+                background: "var(--card-bg)",
                 borderRadius: 12,
                 padding: 20,
                 boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
@@ -754,7 +758,7 @@ export default function EmailComposer() {
                 style={{
                   fontSize: 18,
                   fontWeight: 600,
-                  color: "#0f172a",
+                  color: "var(--foreground)",
                   marginBottom: 8,
                   display: "flex",
                   alignItems: "center",
@@ -764,7 +768,7 @@ export default function EmailComposer() {
                 <Settings style={{ width: 20, height: 20 }} />
                 ユーザー設定
               </h2>
-              <p style={{ fontSize: 14, color: "#64748b", marginBottom: 16, lineHeight: 1.6 }}>
+              <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 16, lineHeight: 1.6 }}>
                 メールの挨拶文に使用する、あなたの名前と会社名を設定してください。
               </p>
 
@@ -774,7 +778,7 @@ export default function EmailComposer() {
                     display: "block",
                     fontSize: 14,
                     fontWeight: 600,
-                    color: "#0f172a",
+                    color: "var(--foreground)",
                     marginBottom: 8,
                   }}
                 >
@@ -789,7 +793,9 @@ export default function EmailComposer() {
                     width: "100%",
                     padding: 12,
                     borderRadius: 8,
-                    border: "1px solid #d1d5db",
+                    border: "1px solid var(--card-border)",
+                    background: "var(--background)",
+                    color: "var(--foreground)",
                     fontSize: 14,
                     boxSizing: "border-box",
                   }}
@@ -802,7 +808,7 @@ export default function EmailComposer() {
                     display: "block",
                     fontSize: 14,
                     fontWeight: 600,
-                    color: "#0f172a",
+                    color: "var(--foreground)",
                     marginBottom: 8,
                   }}
                 >
@@ -817,7 +823,9 @@ export default function EmailComposer() {
                     width: "100%",
                     padding: 12,
                     borderRadius: 8,
-                    border: "1px solid #d1d5db",
+                    border: "1px solid var(--card-border)",
+                    background: "var(--background)",
+                    color: "var(--foreground)",
                     fontSize: 14,
                     boxSizing: "border-box",
                   }}
@@ -844,7 +852,7 @@ export default function EmailComposer() {
             {/* 文体学習セクション */}
             <div
               style={{
-                background: "white",
+                background: "var(--card-bg)",
                 borderRadius: 12,
                 padding: 20,
                 boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
@@ -854,7 +862,7 @@ export default function EmailComposer() {
                 style={{
                   fontSize: 18,
                   fontWeight: 600,
-                  color: "#0f172a",
+                  color: "var(--foreground)",
                   marginBottom: 8,
                   display: "flex",
                   alignItems: "center",
@@ -864,7 +872,7 @@ export default function EmailComposer() {
                 <Brain style={{ width: 20, height: 20 }} />
                 あなたの文体を学習
               </h2>
-              <p style={{ fontSize: 14, color: "#64748b", marginBottom: 16, lineHeight: 1.6 }}>
+              <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 16, lineHeight: 1.6 }}>
                 あなたが実際に書いたメール文を1〜3件貼り付けてください。
                 <br />
                 AIがあなたの文体・トーン・表現パターンを分析し、今後のメール生成に反映します。
@@ -878,13 +886,13 @@ export default function EmailComposer() {
                     display: "block",
                     fontSize: 14,
                     fontWeight: 600,
-                    color: "#0f172a",
+                    color: "var(--foreground)",
                     marginBottom: 8,
                   }}
                 >
                   サンプルメール {index + 1}
                   {index === 0 && <span style={{ color: "#ef4444" }}>（必須）</span>}
-                  {index > 0 && <span style={{ color: "#64748b", fontWeight: 400 }}>（任意）</span>}
+                  {index > 0 && <span style={{ color: "var(--text-secondary)", fontWeight: 400 }}>（任意）</span>}
                 </label>
                 <textarea
                   value={email}
@@ -899,7 +907,9 @@ export default function EmailComposer() {
                     minHeight: 150,
                     padding: 12,
                     borderRadius: 8,
-                    border: "1px solid #d1d5db",
+                    border: "1px solid var(--card-border)",
+                    background: "var(--background)",
+                    color: "var(--foreground)",
                     fontSize: 14,
                     boxSizing: "border-box",
                     resize: "vertical",
@@ -931,7 +941,7 @@ export default function EmailComposer() {
                 padding: "10px 20px",
                 borderRadius: 8,
                 background: learningLoading
-                  ? "#94a3b8"
+                  ? "var(--text-tertiary)"
                   : "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
                 color: "white",
                 border: "none",
@@ -994,7 +1004,7 @@ export default function EmailComposer() {
                     style={{
                       padding: "4px 10px",
                       borderRadius: 6,
-                      background: "white",
+                      background: "var(--card-bg)",
                       color: "#ef4444",
                       border: "1px solid #fecaca",
                       cursor: "pointer",
@@ -1029,7 +1039,7 @@ export default function EmailComposer() {
           style={{
             marginTop: 20,
             fontSize: 11,
-            color: "#94a3b8",
+            color: "var(--text-tertiary)",
             textAlign: "center",
           }}
         >

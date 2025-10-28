@@ -4,7 +4,7 @@ import { Mail } from "lucide-react";
 
 export default function EmailDrafter() {
   return (
-    <div style={{ minHeight: "100vh", padding: "16px", background: "#f8fafc" }}>
+    <div style={{ minHeight: "100vh", padding: "16px", background: "var(--background)" }}>
       <div style={{ margin: "0 auto", maxWidth: 960 }}>
         <div style={{ marginBottom: 16 }}>
           <BackToHome />
@@ -32,14 +32,14 @@ export default function EmailDrafter() {
             fontWeight: 700,
             margin: 0,
             marginBottom: 16,
-            color: "#0f172a"
+            color: "var(--foreground)"
           }}>
             メール叩きくん
           </h1>
 
           <p style={{
             fontSize: 16,
-            color: "#64748b",
+            color: "var(--text-secondary)",
             marginBottom: 32,
             lineHeight: 1.6
           }}>
@@ -60,16 +60,16 @@ export default function EmailDrafter() {
 
           <div style={{
             marginTop: 48,
-            background: "white",
+            background: "var(--card-bg)",
             borderRadius: 12,
             padding: 24,
             textAlign: "left",
             boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
           }}>
-            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: "#0f172a" }}>
+            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: "var(--foreground)" }}>
               予定している機能
             </h2>
-            <ul style={{ paddingLeft: 24, color: "#475569", lineHeight: 2 }}>
+            <ul style={{ paddingLeft: 24, color: "var(--text-secondary)", lineHeight: 2 }}>
               <li>状況説明からメールテンプレート作成</li>
               <li>ビジネスメールの文体調整</li>
               <li>よく使うフレーズの提案</li>

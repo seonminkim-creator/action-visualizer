@@ -387,7 +387,7 @@ export default function MeetingRecorder() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", padding: "16px", background: "#f8fafc" }}>
+    <div style={{ minHeight: "100vh", padding: "16px", background: "var(--background)" }}>
       <div style={{ margin: "0 auto", maxWidth: 960 }}>
         <div style={{ marginBottom: 16 }}>
           <BackToHome />
@@ -424,9 +424,9 @@ export default function MeetingRecorder() {
               style={{
                 padding: "6px 12px",
                 borderRadius: 6,
-                background: showSettings ? "#667eea" : "white",
-                color: showSettings ? "white" : "#475569",
-                border: "1px solid #e5e7eb",
+                background: showSettings ? "#667eea" : "var(--card-bg)",
+                color: showSettings ? "white" : "var(--text-secondary)",
+                border: "1px solid var(--card-border)",
                 cursor: "pointer",
                 fontSize: 13,
                 fontWeight: 500,
@@ -444,9 +444,9 @@ export default function MeetingRecorder() {
               style={{
                 padding: "6px 12px",
                 borderRadius: 6,
-                background: showHistory ? "#43e97b" : "white",
-                color: showHistory ? "white" : "#475569",
-                border: "1px solid #e5e7eb",
+                background: showHistory ? "#43e97b" : "var(--card-bg)",
+                color: showHistory ? "white" : "var(--text-secondary)",
+                border: "1px solid var(--card-border)",
                 cursor: "pointer",
                 whiteSpace: "nowrap",
                 fontSize: 13,
@@ -460,7 +460,7 @@ export default function MeetingRecorder() {
               履歴 {history.length > 0 && `(${history.length})`}
             </button>
           </div>
-          <p style={{ color: "#64748b", fontSize: 14, margin: 0, paddingLeft: 60 }}>
+          <p style={{ color: "var(--text-secondary)", fontSize: 14, margin: 0, paddingLeft: 60 }}>
             {loading && processingStage
               ? processingStage
               : loading
@@ -473,7 +473,7 @@ export default function MeetingRecorder() {
         {showSettings && (
           <div
             style={{
-              background: "white",
+              background: "var(--card-bg)",
               borderRadius: 12,
               padding: 16,
               marginBottom: 16,
@@ -481,7 +481,7 @@ export default function MeetingRecorder() {
               border: "2px solid #667eea",
             }}
           >
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: "#0f172a", margin: "0 0 12px 0" }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: "var(--foreground)", margin: "0 0 12px 0" }}>
               ⚙️ 設定
             </h3>
             <label
@@ -491,7 +491,7 @@ export default function MeetingRecorder() {
                 gap: 8,
                 cursor: "pointer",
                 fontSize: 14,
-                color: "#334155",
+                color: "var(--foreground)",
               }}
             >
               <input
@@ -502,7 +502,7 @@ export default function MeetingRecorder() {
               />
               <span>文字起こし完了後、自動的に議事録を作成する</span>
             </label>
-            <p style={{ fontSize: 12, color: "#64748b", marginTop: 8, marginBottom: 0, marginLeft: 26 }}>
+            <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8, marginBottom: 0, marginLeft: 26 }}>
               ※ この設定は自動的に保存されます
             </p>
           </div>
@@ -512,7 +512,7 @@ export default function MeetingRecorder() {
         {showHistory && (
           <div
             style={{
-              background: "white",
+              background: "var(--card-bg)",
               borderRadius: 12,
               padding: 16,
               marginBottom: 16,
@@ -520,11 +520,11 @@ export default function MeetingRecorder() {
               border: "2px solid #43e97b",
             }}
           >
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: "#0f172a", margin: "0 0 12px 0" }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: "var(--foreground)", margin: "0 0 12px 0" }}>
               📜 履歴（最新10件）
             </h3>
             {history.length === 0 ? (
-              <p style={{ fontSize: 14, color: "#64748b", margin: 0 }}>
+              <p style={{ fontSize: 14, color: "var(--text-secondary)", margin: 0 }}>
                 まだ履歴がありません
               </p>
             ) : (
@@ -536,8 +536,8 @@ export default function MeetingRecorder() {
                     style={{
                       padding: 12,
                       borderRadius: 8,
-                      background: "#f8fafc",
-                      border: "1px solid #e5e7eb",
+                      background: "var(--background)",
+                      border: "1px solid var(--card-border)",
                       cursor: "pointer",
                       transition: "all 0.2s",
                     }}
@@ -546,14 +546,14 @@ export default function MeetingRecorder() {
                       e.currentTarget.style.borderColor = "#43e97b";
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "#f8fafc";
-                      e.currentTarget.style.borderColor = "#e5e7eb";
+                      e.currentTarget.style.background = "var(--background)";
+                      e.currentTarget.style.borderColor = "var(--card-border)";
                     }}
                   >
-                    <div style={{ fontSize: 12, color: "#64748b", marginBottom: 6 }}>
+                    <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>
                       {item.date}
                     </div>
-                    <div style={{ fontSize: 14, color: "#334155", fontWeight: 500 }}>
+                    <div style={{ fontSize: 14, color: "var(--foreground)", fontWeight: 500 }}>
                       {item.summary.summary.purpose.substring(0, 60)}
                       {item.summary.summary.purpose.length > 60 && "..."}
                     </div>
@@ -567,16 +567,16 @@ export default function MeetingRecorder() {
         {!result && !loading && (
           <div
             style={{
-              background: "white",
+              background: "var(--card-bg)",
               borderRadius: 8,
               padding: "12px 16px",
               marginBottom: 16,
-              border: "1px solid #e5e7eb",
+              border: "1px solid var(--card-border)",
             }}
           >
-            <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.7 }}>
+            <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.7 }}>
               <div style={{ marginBottom: 6 }}>
-                <span style={{ fontWeight: 600, color: "#475569" }}>📋 使い方</span>
+                <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>📋 使い方</span>
                 　会議の内容をテキストで入力すると、議事録とTODOを自動生成します
               </div>
             </div>
@@ -585,7 +585,7 @@ export default function MeetingRecorder() {
 
         <div
           style={{
-            background: "white",
+            background: "var(--card-bg)",
             borderRadius: 12,
             padding: 20,
             marginBottom: 16,
@@ -593,13 +593,13 @@ export default function MeetingRecorder() {
           }}
         >
           {/* 録音セクション */}
-          <div style={{ marginBottom: 16, paddingBottom: 16, borderBottom: "1px solid #e5e7eb" }}>
+          <div style={{ marginBottom: 16, paddingBottom: 16, borderBottom: "1px solid var(--card-border)" }}>
             <label
               style={{
                 display: "block",
                 fontSize: 14,
                 fontWeight: 600,
-                color: "#0f172a",
+                color: "var(--foreground)",
                 marginBottom: 12,
               }}
             >
@@ -615,9 +615,9 @@ export default function MeetingRecorder() {
                     flex: 1,
                     padding: "10px 16px",
                     borderRadius: 8,
-                    background: recordingMode === "microphone" ? "#667eea" : "white",
-                    color: recordingMode === "microphone" ? "white" : "#475569",
-                    border: `2px solid ${recordingMode === "microphone" ? "#667eea" : "#e5e7eb"}`,
+                    background: recordingMode === "microphone" ? "#667eea" : "var(--card-bg)",
+                    color: recordingMode === "microphone" ? "white" : "var(--text-secondary)",
+                    border: `2px solid ${recordingMode === "microphone" ? "#667eea" : "var(--card-border)"}`,
                     cursor: "pointer",
                     fontWeight: 600,
                     fontSize: 13,
@@ -636,9 +636,9 @@ export default function MeetingRecorder() {
                     flex: 1,
                     padding: "10px 16px",
                     borderRadius: 8,
-                    background: recordingMode === "system" ? "#667eea" : "white",
-                    color: recordingMode === "system" ? "white" : "#475569",
-                    border: `2px solid ${recordingMode === "system" ? "#667eea" : "#e5e7eb"}`,
+                    background: recordingMode === "system" ? "#667eea" : "var(--card-bg)",
+                    color: recordingMode === "system" ? "white" : "var(--text-secondary)",
+                    border: `2px solid ${recordingMode === "system" ? "#667eea" : "var(--card-border)"}`,
                     cursor: "pointer",
                     fontWeight: 600,
                     fontSize: 13,
@@ -711,7 +711,7 @@ export default function MeetingRecorder() {
                   <span style={{ fontSize: 14, color: "#ef4444", fontWeight: 600 }}>
                     ● 録音中
                   </span>
-                  <span style={{ fontSize: 16, color: "#0f172a", fontWeight: 700, fontFamily: "monospace" }}>
+                  <span style={{ fontSize: 16, color: "var(--foreground)", fontWeight: 700, fontFamily: "monospace" }}>
                     {formatTime(recordingTime)}
                   </span>
                   {recordingMode === "system" && (
@@ -762,21 +762,21 @@ export default function MeetingRecorder() {
               </div>
             )}
             {!isTranscribing && !isRecording && (
-              <div style={{ fontSize: 12, color: "#64748b", marginTop: 8, marginBottom: 0 }}>
+              <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8, marginBottom: 0 }}>
                 <p style={{ margin: "0 0 4px 0" }}>
                   <strong>マイク:</strong> マイクから直接録音します（自分の声のみ）
                 </p>
                 <p style={{ margin: 0 }}>
                   <strong>WEB会議:</strong> システム音声とマイクの両方を録音します（相手＋自分の声）
                   <br />
-                  <span style={{ fontSize: 11, color: "#94a3b8" }}>
+                  <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
                     ※ 録音中にミュートボタンで自分の声のON/OFFを切り替えられます
                   </span>
                 </p>
               </div>
             )}
             {!isTranscribing && isRecording && (
-              <p style={{ fontSize: 12, color: "#64748b", marginTop: 8, marginBottom: 0 }}>
+              <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8, marginBottom: 0 }}>
                 録音停止後、自動的に文字起こしが実行されます
                 {autoGenerateSummary && "。その後、議事録を自動作成します"}
               </p>
@@ -789,7 +789,7 @@ export default function MeetingRecorder() {
               display: "block",
               fontSize: 14,
               fontWeight: 600,
-              color: "#0f172a",
+              color: "var(--foreground)",
               marginBottom: 8,
             }}
           >
@@ -804,7 +804,9 @@ export default function MeetingRecorder() {
               minHeight: 200,
               padding: 12,
               borderRadius: 8,
-              border: "1px solid #d1d5db",
+              border: "1px solid var(--card-border)",
+              background: "var(--background)",
+              color: "var(--foreground)",
               fontSize: 14,
               boxSizing: "border-box",
               resize: "vertical",
@@ -818,7 +820,7 @@ export default function MeetingRecorder() {
             alignItems: "center",
             marginTop: 8,
             fontSize: 12,
-            color: transcript.length > 5000 ? "#d97706" : "#64748b"
+            color: transcript.length > 5000 ? "#d97706" : "var(--text-secondary)"
           }}>
             <span>
               {transcript.length}文字
@@ -847,7 +849,7 @@ export default function MeetingRecorder() {
                 borderRadius: 8,
                 background:
                   loading || !transcript.trim()
-                    ? "#94a3b8"
+                    ? "var(--text-tertiary)"
                     : "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
                 color: "white",
                 border: "none",
@@ -880,7 +882,7 @@ export default function MeetingRecorder() {
               disabled={loading}
               style={{
                 fontSize: 13,
-                color: "#475569",
+                color: "var(--text-secondary)",
                 background: "transparent",
                 border: "none",
                 cursor: loading ? "not-allowed" : "pointer",
@@ -922,7 +924,7 @@ export default function MeetingRecorder() {
           <>
             <div
               style={{
-                background: "white",
+                background: "var(--card-bg)",
                 borderRadius: 12,
                 padding: 20,
                 marginBottom: 16,
@@ -936,14 +938,14 @@ export default function MeetingRecorder() {
                   alignItems: "center",
                   marginBottom: 16,
                   paddingBottom: 8,
-                  borderBottom: "2px solid #e5e7eb",
+                  borderBottom: "2px solid var(--card-border)",
                 }}
               >
                 <h2
                   style={{
                     fontSize: 18,
                     fontWeight: 600,
-                    color: "#0f172a",
+                    color: "var(--foreground)",
                     margin: 0,
                   }}
                 >
@@ -954,9 +956,9 @@ export default function MeetingRecorder() {
                   style={{
                     padding: "6px 12px",
                     borderRadius: 6,
-                    background: copiedSection === "summary" ? "#10b981" : "white",
-                    color: copiedSection === "summary" ? "white" : "#475569",
-                    border: "1px solid #e5e7eb",
+                    background: copiedSection === "summary" ? "#10b981" : "var(--card-bg)",
+                    color: copiedSection === "summary" ? "white" : "var(--text-secondary)",
+                    border: "1px solid var(--card-border)",
                     cursor: "pointer",
                     fontSize: 13,
                     fontWeight: 500,
@@ -985,13 +987,13 @@ export default function MeetingRecorder() {
                   style={{
                     fontSize: 14,
                     fontWeight: 600,
-                    color: "#475569",
+                    color: "var(--text-secondary)",
                     marginBottom: 8,
                   }}
                 >
                   会議の目的
                 </h3>
-                <p style={{ fontSize: 14, color: "#334155", lineHeight: 1.7, margin: 0 }}>
+                <p style={{ fontSize: 14, color: "var(--foreground)", lineHeight: 1.7, margin: 0 }}>
                   {result.summary.purpose}
                 </p>
               </div>
@@ -1001,7 +1003,7 @@ export default function MeetingRecorder() {
                   style={{
                     fontSize: 14,
                     fontWeight: 600,
-                    color: "#475569",
+                    color: "var(--text-secondary)",
                     marginBottom: 8,
                   }}
                 >
@@ -1013,7 +1015,7 @@ export default function MeetingRecorder() {
                       key={i}
                       style={{
                         fontSize: 14,
-                        color: "#334155",
+                        color: "var(--foreground)",
                         marginBottom: 6,
                         lineHeight: 1.7,
                       }}
@@ -1029,7 +1031,7 @@ export default function MeetingRecorder() {
                   style={{
                     fontSize: 14,
                     fontWeight: 600,
-                    color: "#475569",
+                    color: "var(--text-secondary)",
                     marginBottom: 8,
                   }}
                 >
@@ -1041,7 +1043,7 @@ export default function MeetingRecorder() {
                       key={i}
                       style={{
                         fontSize: 14,
-                        color: "#334155",
+                        color: "var(--foreground)",
                         marginBottom: 6,
                         lineHeight: 1.7,
                       }}
@@ -1055,7 +1057,7 @@ export default function MeetingRecorder() {
 
             <div
               style={{
-                background: "white",
+                background: "var(--card-bg)",
                 borderRadius: 12,
                 padding: 20,
                 marginBottom: 16,
@@ -1069,14 +1071,14 @@ export default function MeetingRecorder() {
                   alignItems: "center",
                   marginBottom: 16,
                   paddingBottom: 8,
-                  borderBottom: "2px solid #e5e7eb",
+                  borderBottom: "2px solid var(--card-border)",
                 }}
               >
                 <h2
                   style={{
                     fontSize: 18,
                     fontWeight: 600,
-                    color: "#0f172a",
+                    color: "var(--foreground)",
                     margin: 0,
                   }}
                 >
@@ -1087,9 +1089,9 @@ export default function MeetingRecorder() {
                   style={{
                     padding: "6px 12px",
                     borderRadius: 6,
-                    background: copiedSection === "todos" ? "#10b981" : "white",
-                    color: copiedSection === "todos" ? "white" : "#475569",
-                    border: "1px solid #e5e7eb",
+                    background: copiedSection === "todos" ? "#10b981" : "var(--card-bg)",
+                    color: copiedSection === "todos" ? "white" : "var(--text-secondary)",
+                    border: "1px solid var(--card-border)",
                     cursor: "pointer",
                     fontSize: 13,
                     fontWeight: 500,
@@ -1127,7 +1129,7 @@ export default function MeetingRecorder() {
                         style={{
                           marginBottom: 12,
                           fontSize: 14,
-                          color: "#334155",
+                          color: "var(--foreground)",
                           display: "flex",
                           alignItems: "flex-start",
                           gap: 8,
@@ -1160,7 +1162,7 @@ export default function MeetingRecorder() {
                               fontWeight: 500,
                               background: "#f1f5f9",
                               border: "1px solid #cbd5e1",
-                              color: "#64748b",
+                              color: "var(--text-secondary)",
                             }}
                           >
                             {todo.assignee}
@@ -1193,7 +1195,7 @@ export default function MeetingRecorder() {
 
             <div
               style={{
-                background: "white",
+                background: "var(--card-bg)",
                 borderRadius: 12,
                 padding: 20,
                 boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
@@ -1206,14 +1208,14 @@ export default function MeetingRecorder() {
                   alignItems: "center",
                   marginBottom: 16,
                   paddingBottom: 8,
-                  borderBottom: "2px solid #e5e7eb",
+                  borderBottom: "2px solid var(--card-border)",
                 }}
               >
                 <h2
                   style={{
                     fontSize: 18,
                     fontWeight: 600,
-                    color: "#0f172a",
+                    color: "var(--foreground)",
                     margin: 0,
                   }}
                 >
@@ -1224,9 +1226,9 @@ export default function MeetingRecorder() {
                   style={{
                     padding: "6px 12px",
                     borderRadius: 6,
-                    background: copiedSection === "minutes" ? "#10b981" : "white",
-                    color: copiedSection === "minutes" ? "white" : "#475569",
-                    border: "1px solid #e5e7eb",
+                    background: copiedSection === "minutes" ? "#10b981" : "var(--card-bg)",
+                    color: copiedSection === "minutes" ? "white" : "var(--text-secondary)",
+                    border: "1px solid var(--card-border)",
                     cursor: "pointer",
                     fontSize: 13,
                     fontWeight: 500,
@@ -1252,7 +1254,7 @@ export default function MeetingRecorder() {
               <div
                 style={{
                   fontSize: 14,
-                  color: "#334155",
+                  color: "var(--foreground)",
                   lineHeight: 1.8,
                   whiteSpace: "pre-wrap",
                 }}
@@ -1267,7 +1269,7 @@ export default function MeetingRecorder() {
           style={{
             marginTop: 20,
             fontSize: 11,
-            color: "#94a3b8",
+            color: "var(--text-tertiary)",
             textAlign: "center",
           }}
         >

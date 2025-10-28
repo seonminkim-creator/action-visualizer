@@ -451,7 +451,7 @@ export default function CalendarFinder() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", padding: "16px", background: "#f8fafc" }}>
+    <div style={{ minHeight: "100vh", padding: "16px", background: "var(--background)" }}>
       <style>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(10px); }
@@ -579,15 +579,15 @@ export default function CalendarFinder() {
                     padding: "6px 12px",
                     borderRadius: 6,
                     background: "transparent",
-                    border: "1px solid #e5e7eb",
-                    color: "#64748b",
+                    border: "1px solid var(--card-border)",
+                    color: "var(--text-secondary)",
                     cursor: "pointer",
                     fontSize: 12,
                     fontWeight: 500,
                     transition: "all 0.2s"
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "#f1f5f9";
+                    e.currentTarget.style.background = "var(--card-border)";
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = "transparent";
@@ -598,7 +598,7 @@ export default function CalendarFinder() {
               </div>
             )}
           </div>
-          <p style={{ color: "#64748b", fontSize: 14, margin: 0, paddingLeft: 60 }}>
+          <p style={{ color: "var(--text-secondary)", fontSize: 14, margin: 0, paddingLeft: 60 }}>
             {loading ? "空き時間を取得中です…" : "空き時間をすぐ可視化"}
           </p>
         </div>
@@ -606,13 +606,13 @@ export default function CalendarFinder() {
         {/* カレンダープロバイダー選択 - 未認証の場合のみ表示 */}
         {!authChecking && !isAuthenticated && (
           <div style={{
-            background: "white",
+            background: "var(--card-bg)",
             padding: 16,
             borderRadius: 12,
-            border: "1px solid #e5e7eb",
+            border: "1px solid var(--card-border)",
             marginBottom: 16
           }}>
-            <p style={{ fontSize: 14, color: "#475569", marginBottom: 12 }}>
+            <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 12 }}>
               カレンダーと連携して、実際の空き時間を表示します
             </p>
 
@@ -621,7 +621,7 @@ export default function CalendarFinder() {
               display: "flex",
               gap: 8,
               marginBottom: 12,
-              background: "#f8fafc",
+              background: "var(--background)",
               padding: 4,
               borderRadius: 8,
             }}>
@@ -631,9 +631,9 @@ export default function CalendarFinder() {
                   flex: 1,
                   padding: "8px 12px",
                   borderRadius: 6,
-                  background: calendarProvider === "google" ? "white" : "transparent",
-                  color: calendarProvider === "google" ? "#0f172a" : "#64748b",
-                  border: calendarProvider === "google" ? "1px solid #e5e7eb" : "none",
+                  background: calendarProvider === "google" ? "var(--card-bg)" : "transparent",
+                  color: calendarProvider === "google" ? "var(--foreground)" : "var(--text-secondary)",
+                  border: calendarProvider === "google" ? "1px solid var(--card-border)" : "none",
                   cursor: "pointer",
                   fontSize: 13,
                   fontWeight: 600,
@@ -661,9 +661,9 @@ export default function CalendarFinder() {
                   flex: 1,
                   padding: "8px 12px",
                   borderRadius: 6,
-                  background: calendarProvider === "microsoft" ? "white" : "transparent",
-                  color: calendarProvider === "microsoft" ? "#0f172a" : "#64748b",
-                  border: calendarProvider === "microsoft" ? "1px solid #e5e7eb" : "none",
+                  background: calendarProvider === "microsoft" ? "var(--card-bg)" : "transparent",
+                  color: calendarProvider === "microsoft" ? "var(--foreground)" : "var(--text-secondary)",
+                  border: calendarProvider === "microsoft" ? "1px solid var(--card-border)" : "none",
                   cursor: "pointer",
                   fontSize: 13,
                   fontWeight: 600,
@@ -696,8 +696,8 @@ export default function CalendarFinder() {
                   width: "100%",
                   padding: "12px 20px",
                   borderRadius: 8,
-                  background: authLoading ? "#94a3b8" : "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-                  color: "white",
+                  background: authLoading ? "var(--text-tertiary)" : "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+                  color: "var(--card-bg)",
                   border: "none",
                   cursor: authLoading ? "not-allowed" : "pointer",
                   fontSize: 15,
@@ -738,10 +738,10 @@ export default function CalendarFinder() {
           style={{
             gap: 8,
             marginBottom: 16,
-            background: "white",
+            background: "var(--card-bg)",
             padding: 4,
             borderRadius: 8,
-            border: "1px solid #e5e7eb"
+            border: "1px solid var(--card-border)"
           }}
         >
           <button
@@ -751,8 +751,8 @@ export default function CalendarFinder() {
               padding: "8px 16px",
               borderRadius: 6,
               border: "none",
-              background: mode === "visit" ? "#0f172a" : "transparent",
-              color: mode === "visit" ? "white" : "#64748b",
+              background: mode === "visit" ? "var(--foreground)" : "transparent",
+              color: mode === "visit" ? "var(--card-bg)" : "var(--text-secondary)",
               cursor: "pointer",
               fontSize: 14,
               fontWeight: 500,
@@ -768,8 +768,8 @@ export default function CalendarFinder() {
               padding: "8px 16px",
               borderRadius: 6,
               border: "none",
-              background: mode === "mail" ? "#0f172a" : "transparent",
-              color: mode === "mail" ? "white" : "#64748b",
+              background: mode === "mail" ? "var(--foreground)" : "transparent",
+              color: mode === "mail" ? "var(--card-bg)" : "var(--text-secondary)",
               cursor: "pointer",
               fontSize: 14,
               fontWeight: 500,
@@ -787,16 +787,16 @@ export default function CalendarFinder() {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            background: "white",
+            background: "var(--card-bg)",
             padding: 12,
             borderRadius: 8,
-            border: "1px solid #e5e7eb"
+            border: "1px solid var(--card-border)"
           }}>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "#0f172a", marginBottom: 4 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", marginBottom: 4 }}>
                 空き時間を細分化
               </div>
-              <div style={{ fontSize: 12, color: "#64748b" }}>
+              <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
                 {enableSplitSlots ? "30分刻みで表示中" : "まとめて表示中"}
               </div>
             </div>
@@ -809,8 +809,8 @@ export default function CalendarFinder() {
               style={{
                 padding: "8px 16px",
                 borderRadius: 6,
-                background: enableSplitSlots ? "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)" : "#f1f5f9",
-                color: enableSplitSlots ? "white" : "#64748b",
+                background: enableSplitSlots ? "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)" : "var(--card-border)",
+                color: enableSplitSlots ? "var(--card-bg)" : "var(--text-secondary)",
                 border: "none",
                 cursor: "pointer",
                 fontSize: 13,
@@ -828,7 +828,7 @@ export default function CalendarFinder() {
           <div style={{
             fontSize: 13,
             fontWeight: 600,
-            color: "#475569",
+            color: "var(--text-secondary)",
             marginBottom: 8
           }}>
             期間
@@ -847,12 +847,12 @@ export default function CalendarFinder() {
               style={{
                 padding: "16px 20px",
                 borderRadius: 8,
-                background: selectedPeriod === period ? "#0f172a" : "#e5e7eb",
+                background: selectedPeriod === period ? "var(--foreground)" : "var(--card-border)",
                 border: "none",
                 cursor: loading ? "not-allowed" : "pointer",
                 fontSize: 15,
                 fontWeight: 600,
-                color: selectedPeriod === period ? "white" : "#64748b",
+                color: selectedPeriod === period ? "var(--card-bg)" : "var(--text-secondary)",
                 whiteSpace: "nowrap",
                 boxShadow: selectedPeriod === period ? "0 2px 4px rgba(0,0,0,0.1)" : "none",
                 opacity: loading ? 0.6 : 1
@@ -869,7 +869,7 @@ export default function CalendarFinder() {
           <div style={{
             fontSize: 13,
             fontWeight: 600,
-            color: "#475569",
+            color: "var(--text-secondary)",
             marginBottom: 8
           }}>
             所要時間
@@ -887,12 +887,12 @@ export default function CalendarFinder() {
                 style={{
                   padding: "12px 16px",
                   borderRadius: 6,
-                  background: !selectedPeriod ? "#e5e7eb" : (durationMin === duration ? "#0f172a" : "white"),
-                  border: `1px solid ${!selectedPeriod ? "#e5e7eb" : (durationMin === duration ? "#0f172a" : "#e5e7eb")}`,
+                  background: !selectedPeriod ? "var(--card-border)" : (durationMin === duration ? "var(--foreground)" : "var(--card-bg)"),
+                  border: `1px solid ${!selectedPeriod ? "var(--card-border)" : (durationMin === duration ? "var(--foreground)" : "var(--card-border)")}`,
                   cursor: !selectedPeriod ? "not-allowed" : "pointer",
                   fontSize: 14,
                   fontWeight: 500,
-                  color: !selectedPeriod ? "#94a3b8" : (durationMin === duration ? "white" : "#64748b"),
+                  color: !selectedPeriod ? "var(--text-tertiary)" : (durationMin === duration ? "var(--card-bg)" : "var(--text-secondary)"),
                   transition: "all 0.2s",
                   opacity: !selectedPeriod ? 0.6 : 1
                 }}
@@ -911,7 +911,7 @@ export default function CalendarFinder() {
                 key={i}
                 style={{
                   height: 60,
-                  background: "#f1f5f9",
+                  background: "var(--card-border)",
                   borderRadius: 8,
                   marginBottom: 12,
                   animation: "pulse 1.5s ease-in-out infinite"
@@ -936,7 +936,7 @@ export default function CalendarFinder() {
                 fontSize: 18,
                 fontWeight: 600,
                 margin: 0,
-                color: "#0f172a"
+                color: "var(--foreground)"
               }}>
                 {periodLabels[selectedPeriod]}
               </h2>
@@ -952,7 +952,7 @@ export default function CalendarFinder() {
                     cursor: "pointer",
                     fontSize: 13,
                     fontWeight: 500,
-                    color: "white",
+                    color: "var(--card-bg)",
                     transition: "all 0.2s"
                   }}
                 >
@@ -963,12 +963,12 @@ export default function CalendarFinder() {
                   style={{
                     padding: "8px 16px",
                     borderRadius: 8,
-                    background: "#0f172a",
+                    background: "var(--foreground)",
                     border: "none",
                     cursor: "pointer",
                     fontSize: 13,
                     fontWeight: 500,
-                    color: "white",
+                    color: "var(--card-bg)",
                     transition: "all 0.2s"
                   }}
                 >
@@ -979,8 +979,8 @@ export default function CalendarFinder() {
                   style={{
                     padding: "8px 16px",
                     borderRadius: 8,
-                    background: copied ? "#10b981" : "#0f172a",
-                    color: "white",
+                    background: copied ? "#10b981" : "var(--foreground)",
+                    color: "var(--card-bg)",
                     border: "none",
                     cursor: "pointer",
                     fontSize: 13,
@@ -1000,7 +1000,7 @@ export default function CalendarFinder() {
             {/* 訪問用表示 */}
             {mode === "visit" && (
               <div style={{
-                background: "white",
+                background: "var(--card-bg)",
                 borderRadius: 12,
                 padding: 16,
                 boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
@@ -1015,10 +1015,10 @@ export default function CalendarFinder() {
                       <div style={{
                         fontSize: 15,
                         fontWeight: 700,
-                        color: day.isHoliday ? "#ef4444" : "#0f172a",
+                        color: day.isHoliday ? "#ef4444" : "var(--foreground)",
                         marginBottom: 10,
                         paddingBottom: 6,
-                        borderBottom: "2px solid #f1f5f9"
+                        borderBottom: "2px solid var(--card-border)"
                       }}>
                         {formattedDate} {day.isHoliday && "祝日"}
                       </div>
@@ -1035,7 +1035,7 @@ export default function CalendarFinder() {
                       ) : day.slots.length === 0 ? (
                         <div style={{
                           fontSize: 14,
-                          color: "#94a3b8",
+                          color: "var(--text-tertiary)",
                           textAlign: "center",
                           padding: "12px 0",
                           fontStyle: "italic"
@@ -1059,12 +1059,12 @@ export default function CalendarFinder() {
                                 key={sidx}
                                 style={{
                                   padding: "10px 14px",
-                                  background: "#f1f5f9",
+                                  background: "var(--card-border)",
                                   borderRadius: 6,
                                   fontSize: 14,
                                   fontWeight: 500,
-                                  color: "#334155",
-                                  border: "1px solid #e2e8f0",
+                                  color: "var(--text-secondary)",
+                                  border: "1px solid var(--card-border)",
                                   whiteSpace: "nowrap"
                                 }}
                               >
@@ -1083,7 +1083,7 @@ export default function CalendarFinder() {
             {/* メール候補表示 */}
             {mode === "mail" && (
               <div style={{
-                background: "white",
+                background: "var(--card-bg)",
                 borderRadius: 12,
                 padding: 16,
                 boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
@@ -1091,7 +1091,7 @@ export default function CalendarFinder() {
                 <div style={{ marginBottom: 16 }}>
                   <div style={{
                     fontSize: 12,
-                    color: "#64748b",
+                    color: "var(--text-secondary)",
                     marginBottom: 4
                   }}>
                     件名
@@ -1099,7 +1099,7 @@ export default function CalendarFinder() {
                   <div style={{
                     fontSize: 14,
                     fontWeight: 600,
-                    color: "#0f172a"
+                    color: "var(--foreground)"
                   }}>
                     {formatMailText().subject}
                   </div>
@@ -1107,14 +1107,14 @@ export default function CalendarFinder() {
                 <div>
                   <div style={{
                     fontSize: 12,
-                    color: "#64748b",
+                    color: "var(--text-secondary)",
                     marginBottom: 4
                   }}>
                     本文
                   </div>
                   <div style={{
                     fontSize: 13,
-                    color: "#475569",
+                    color: "var(--text-secondary)",
                     whiteSpace: "pre-wrap",
                     lineHeight: 1.7
                   }}>
@@ -1144,7 +1144,7 @@ export default function CalendarFinder() {
           onClick={() => setShowSettings(false)}
           >
             <div style={{
-              background: "white",
+              background: "var(--card-bg)",
               borderRadius: 12,
               padding: 24,
               maxWidth: 600,
@@ -1154,14 +1154,14 @@ export default function CalendarFinder() {
             }}
             onClick={(e) => e.stopPropagation()}
             >
-              <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16, color: "var(--foreground)" }}>
                 {mode === "mail" ? "メール設定" : "表示設定"}
               </h2>
 
               {mode === "mail" && (
                 <>
                   <div style={{ marginBottom: 16 }}>
-                    <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
+                    <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8, color: "var(--foreground)" }}>
                       件名テンプレート
                     </label>
                 <input
@@ -1173,17 +1173,19 @@ export default function CalendarFinder() {
                     width: "100%",
                     padding: "8px 12px",
                     borderRadius: 6,
-                    border: "1px solid #e5e7eb",
-                    fontSize: 14
+                    border: "1px solid var(--card-border)",
+                    fontSize: 14,
+                    background: "var(--background)",
+                    color: "var(--foreground)"
                   }}
                 />
-                <p style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>
                   {"{期間}"} と入力すると期間名に置換されます
                 </p>
               </div>
 
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
+                <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8, color: "var(--foreground)" }}>
                   本文テンプレート
                 </label>
                 <textarea
@@ -1195,13 +1197,15 @@ export default function CalendarFinder() {
                     width: "100%",
                     padding: "8px 12px",
                     borderRadius: 6,
-                    border: "1px solid #e5e7eb",
+                    border: "1px solid var(--card-border)",
                     fontSize: 14,
                     fontFamily: "inherit",
-                    resize: "vertical"
+                    resize: "vertical",
+                    background: "var(--background)",
+                    color: "var(--foreground)"
                   }}
                 />
-                <p style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>
                   {"{候補日}"} と入力すると候補日リストに置換されます
                 </p>
               </div>
@@ -1209,7 +1213,7 @@ export default function CalendarFinder() {
               )}
 
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
+                <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8, color: "var(--foreground)" }}>
                   日付フォーマット
                 </label>
                 <select
@@ -1219,9 +1223,10 @@ export default function CalendarFinder() {
                     width: "100%",
                     padding: "8px 12px",
                     borderRadius: 6,
-                    border: "1px solid #e5e7eb",
+                    border: "1px solid var(--card-border)",
                     fontSize: 14,
-                    background: "white"
+                    background: "var(--background)",
+                    color: "var(--foreground)"
                   }}
                 >
                   <option value="yy/mm/dd（曜日）">25/10/27（月）</option>
@@ -1231,14 +1236,14 @@ export default function CalendarFinder() {
                   <option value="yyyy/mm/dd">2025/10/27</option>
                   <option value="mm/dd">10/27</option>
                 </select>
-                <p style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>
                   {mode === "mail" ? "メール本文の日付表示形式を選択できます" : "日付の表示形式を選択できます"}
                 </p>
               </div>
 
               {mode === "mail" && (
                 <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
+                  <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8, color: "var(--foreground)" }}>
                     無視するキーワード（カンマ区切り）
                 </label>
                 <input
@@ -1250,18 +1255,20 @@ export default function CalendarFinder() {
                     width: "100%",
                     padding: "8px 12px",
                     borderRadius: 6,
-                    border: "1px solid #e5e7eb",
-                    fontSize: 14
+                    border: "1px solid var(--card-border)",
+                    fontSize: 14,
+                    background: "var(--background)",
+                    color: "var(--foreground)"
                   }}
                 />
-                <p style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>
                   これらのキーワードを含む予定は空き時間として扱われます
                 </p>
               </div>
               )}
 
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
+                <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8, color: "var(--foreground)" }}>
                   {mode === "mail" ? "メール本文に表示する候補数" : "表示する候補数"}
                 </label>
                 <select
@@ -1271,9 +1278,10 @@ export default function CalendarFinder() {
                     width: "100%",
                     padding: "8px 12px",
                     borderRadius: 6,
-                    border: "1px solid #e5e7eb",
+                    border: "1px solid var(--card-border)",
                     fontSize: 14,
-                    background: "white"
+                    background: "var(--background)",
+                    color: "var(--foreground)"
                   }}
                 >
                   <option value="1">1つまで</option>
@@ -1281,13 +1289,13 @@ export default function CalendarFinder() {
                   <option value="3">3つまで</option>
                   <option value="all">全部</option>
                 </select>
-                <p style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>
                   {mode === "mail" ? "メールに含める候補日の最大数を制限できます" : "画面に表示する候補日の最大数を制限できます"}
                 </p>
               </div>
 
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 500, cursor: "pointer", color: "var(--foreground)" }}>
                   <input
                     type="checkbox"
                     checked={showTodayAfternoon}
@@ -1296,13 +1304,13 @@ export default function CalendarFinder() {
                   />
                   午後以降も当日の予定を表示する
                 </label>
-                <p style={{ fontSize: 12, color: "#64748b", marginTop: 4, marginLeft: 26 }}>
+                <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4, marginLeft: 26 }}>
                   オフにすると、12時以降は当日の候補を表示しません
                 </p>
               </div>
 
               <div style={{ marginBottom: 24 }}>
-                <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8 }}>
+                <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 8, color: "var(--foreground)" }}>
                   営業時間
                 </label>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -1313,16 +1321,17 @@ export default function CalendarFinder() {
                       flex: 1,
                       padding: "8px 12px",
                       borderRadius: 6,
-                      border: "1px solid #e5e7eb",
+                      border: "1px solid var(--card-border)",
                       fontSize: 14,
-                      background: "white"
+                      background: "var(--background)",
+                      color: "var(--foreground)"
                     }}
                   >
                     {Array.from({ length: 24 }, (_, i) => (
                       <option key={i} value={i}>{String(i).padStart(2, "0")}:00</option>
                     ))}
                   </select>
-                  <span style={{ fontSize: 14, color: "#64748b" }}>〜</span>
+                  <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>〜</span>
                   <select
                     value={workEndHour}
                     onChange={(e) => setWorkEndHour(Number(e.target.value))}
@@ -1330,9 +1339,10 @@ export default function CalendarFinder() {
                       flex: 1,
                       padding: "8px 12px",
                       borderRadius: 6,
-                      border: "1px solid #e5e7eb",
+                      border: "1px solid var(--card-border)",
                       fontSize: 14,
-                      background: "white"
+                      background: "var(--background)",
+                      color: "var(--foreground)"
                     }}
                   >
                     {Array.from({ length: 24 }, (_, i) => (
@@ -1340,7 +1350,7 @@ export default function CalendarFinder() {
                     ))}
                   </select>
                 </div>
-                <p style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>
                   空き時間として表示する時間帯を設定できます
                 </p>
               </div>
@@ -1354,10 +1364,11 @@ export default function CalendarFinder() {
                       padding: "10px 16px",
                       borderRadius: 6,
                       background: "transparent",
-                      border: "1px solid #e5e7eb",
+                      border: "1px solid var(--card-border)",
                       cursor: "pointer",
                       fontSize: 14,
-                      fontWeight: 500
+                      fontWeight: 500,
+                      color: "var(--foreground)"
                     }}
                   >
                     キャンセル
@@ -1369,7 +1380,7 @@ export default function CalendarFinder() {
                       padding: "10px 16px",
                       borderRadius: 6,
                       background: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-                      color: "white",
+                      color: "var(--card-bg)",
                       border: "none",
                       cursor: "pointer",
                       fontSize: 14,

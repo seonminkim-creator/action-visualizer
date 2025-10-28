@@ -130,7 +130,7 @@ export default function AgriTalkAssistant() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", padding: "16px", background: "#f8fafc" }}>
+    <div style={{ minHeight: "100vh", padding: "16px", background: "var(--background)" }}>
       <style>{`
         @keyframes spin {
           from { transform: rotate(0deg); }
@@ -139,20 +139,20 @@ export default function AgriTalkAssistant() {
         .markdown-content {
           font-size: 14px;
           line-height: 1.8;
-          color: #1e293b;
+          color: var(--foreground);
         }
         .markdown-content h2 {
           font-size: 18px;
           font-weight: 600;
-          color: #0f172a;
+          color: var(--foreground);
           margin: 20px 0 12px 0;
           padding-bottom: 8px;
-          border-bottom: 2px solid #e5e7eb;
+          border-bottom: 2px solid var(--card-border);
         }
         .markdown-content h3 {
           font-size: 15px;
           font-weight: 600;
-          color: #334155;
+          color: var(--foreground);
           margin: 12px 0 6px 0;
         }
         .markdown-content ul {
@@ -164,7 +164,7 @@ export default function AgriTalkAssistant() {
           margin-bottom: 10px;
           padding-left: 20px;
           position: relative;
-          color: #334155;
+          color: var(--foreground);
           line-height: 1.7;
         }
         .markdown-content li:before {
@@ -177,12 +177,12 @@ export default function AgriTalkAssistant() {
         }
         .markdown-content hr {
           border: none;
-          border-top: 2px solid #e5e7eb;
+          border-top: 2px solid var(--card-border);
           margin: 24px 0;
         }
         .markdown-content strong {
           font-weight: 600;
-          color: #0f172a;
+          color: var(--foreground);
         }
         .markdown-content p {
           margin: 10px 0;
@@ -207,7 +207,7 @@ export default function AgriTalkAssistant() {
           border-left: 4px solid #43e97b;
           padding-left: 16px;
           margin: 16px 0;
-          color: #334155;
+          color: var(--foreground);
           font-style: normal;
         }
       `}</style>
@@ -244,7 +244,7 @@ export default function AgriTalkAssistant() {
               話題提案くん
             </h1>
           </div>
-          <p style={{ color: "#64748b", fontSize: 14, margin: 0, paddingLeft: 60 }}>
+          <p style={{ color: "var(--text-secondary)", fontSize: 14, margin: 0, paddingLeft: 60 }}>
             {loading
               ? "🔍 直近3週間の旬な話題を検索中...（最大60秒程度かかる場合があります）"
               : "農家さんとの会話ネタを提供"}
@@ -255,26 +255,26 @@ export default function AgriTalkAssistant() {
         {!result && !loading && (
           <div
             style={{
-              background: "white",
+              background: "var(--card-bg)",
               borderRadius: 8,
               padding: "12px 16px",
               marginBottom: 16,
-              border: "1px solid #e5e7eb",
+              border: "1px solid var(--card-border)",
             }}
           >
             <div
               style={{
                 fontSize: 12,
-                color: "#64748b",
+                color: "var(--text-secondary)",
                 lineHeight: 1.7,
               }}
             >
               <div style={{ marginBottom: 6 }}>
-                <span style={{ fontWeight: 600, color: "#475569" }}>🌾 訪問前準備</span>
+                <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>🌾 訪問前準備</span>
                 　地域の天気・市況・安全情報などをまとめて確認
               </div>
               <div>
-                <span style={{ fontWeight: 600, color: "#475569" }}>💬 アイスブレイク</span>
+                <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>💬 アイスブレイク</span>
                 　地域の話題や会話ヒントで関係構築をサポート
               </div>
             </div>
@@ -284,7 +284,7 @@ export default function AgriTalkAssistant() {
         {/* 入力フォーム */}
         <div
           style={{
-            background: "white",
+            background: "var(--card-bg)",
             borderRadius: 12,
             padding: 20,
             marginBottom: 16,
@@ -298,7 +298,7 @@ export default function AgriTalkAssistant() {
                   display: "block",
                   fontSize: 13,
                   fontWeight: 600,
-                  color: "#0f172a",
+                  color: "var(--foreground)",
                   marginBottom: 6,
                 }}
               >
@@ -313,9 +313,11 @@ export default function AgriTalkAssistant() {
                   width: "100%",
                   padding: "10px 12px",
                   borderRadius: 8,
-                  border: "1px solid #d1d5db",
+                  border: "1px solid var(--card-border)",
                   fontSize: 14,
                   boxSizing: "border-box",
+                  background: "var(--background)",
+                  color: "var(--foreground)",
                 }}
               />
             </div>
@@ -326,7 +328,7 @@ export default function AgriTalkAssistant() {
                   display: "block",
                   fontSize: 13,
                   fontWeight: 600,
-                  color: "#0f172a",
+                  color: "var(--foreground)",
                   marginBottom: 6,
                 }}
               >
@@ -341,9 +343,11 @@ export default function AgriTalkAssistant() {
                   width: "100%",
                   padding: "10px 12px",
                   borderRadius: 8,
-                  border: "1px solid #d1d5db",
+                  border: "1px solid var(--card-border)",
                   fontSize: 14,
                   boxSizing: "border-box",
+                  background: "var(--background)",
+                  color: "var(--foreground)",
                 }}
               />
             </div>
@@ -355,12 +359,12 @@ export default function AgriTalkAssistant() {
                   display: "block",
                   fontSize: 13,
                   fontWeight: 600,
-                  color: "#0f172a",
+                  color: "var(--foreground)",
                   marginBottom: 8,
                 }}
               >
                 話題カテゴリ <span style={{ color: "#dc2626" }}>*</span>
-                <span style={{ fontSize: 11, fontWeight: 400, color: "#64748b", marginLeft: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 400, color: "var(--text-secondary)", marginLeft: 8 }}>
                   （複数選択可）
                 </span>
               </label>
@@ -376,22 +380,22 @@ export default function AgriTalkAssistant() {
                       borderRadius: 8,
                       border: selectedCategories.includes(cat.id)
                         ? "2px solid #43e97b"
-                        : "1px solid #d1d5db",
+                        : "1px solid var(--card-border)",
                       background: selectedCategories.includes(cat.id)
                         ? "#f0fdf4"
-                        : "white",
+                        : "var(--card-bg)",
                       cursor: "pointer",
                       transition: "all 0.2s",
                       fontSize: 13,
                     }}
                     onMouseEnter={(e) => {
                       if (!selectedCategories.includes(cat.id)) {
-                        e.currentTarget.style.background = "#f9fafb";
+                        e.currentTarget.style.background = "var(--background)";
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (!selectedCategories.includes(cat.id)) {
-                        e.currentTarget.style.background = "white";
+                        e.currentTarget.style.background = "var(--card-bg)";
                       }
                     }}
                   >
@@ -402,7 +406,7 @@ export default function AgriTalkAssistant() {
                       style={{ cursor: "pointer" }}
                     />
                     <span>{cat.icon}</span>
-                    <span style={{ fontSize: 12, color: "#334155" }}>{cat.label}</span>
+                    <span style={{ fontSize: 12, color: "var(--foreground)" }}>{cat.label}</span>
                   </label>
                 ))}
               </div>
@@ -453,7 +457,7 @@ export default function AgriTalkAssistant() {
                 disabled={loading}
                 style={{
                   fontSize: 13,
-                  color: "#475569",
+                  color: "var(--text-secondary)",
                   background: "transparent",
                   border: "none",
                   cursor: loading ? "not-allowed" : "pointer",
@@ -497,7 +501,7 @@ export default function AgriTalkAssistant() {
         {result && !loading && (
           <div
             style={{
-              background: "white",
+              background: "var(--card-bg)",
               borderRadius: 12,
               padding: 24,
               boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
@@ -514,7 +518,7 @@ export default function AgriTalkAssistant() {
           style={{
             marginTop: 20,
             fontSize: 11,
-            color: "#94a3b8",
+            color: "var(--text-tertiary)",
             textAlign: "center",
           }}
         >
