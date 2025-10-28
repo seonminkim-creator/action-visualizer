@@ -12,6 +12,7 @@ export default function CalendarFinder() {
   const [result, setResult] = useState<DaySlots[] | null>(null);
   const [copied, setCopied] = useState(false);
   const [durationMin, setDurationMin] = useState<number | null>(null);
+  const [calendarProvider, setCalendarProvider] = useState<"google" | "microsoft">("google"); // カレンダープロバイダー
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [authChecking, setAuthChecking] = useState(true); // 認証チェック中
@@ -91,11 +92,12 @@ export default function CalendarFinder() {
     checkAuthStatus();
   }, []);
 
-  // Google認証を開始
-  const handleGoogleAuth = async () => {
+  // カレンダー認証を開始
+  const handleCalendarAuth = async () => {
     setAuthLoading(true);
     try {
-      const response = await fetch("/api/auth/google");
+      const endpoint = calendarProvider === "google" ? "/api/auth/google" : "/api/auth/microsoft";
+      const response = await fetch(endpoint);
       const { url } = await response.json();
       window.location.href = url;
     } catch (error) {
@@ -110,8 +112,12 @@ export default function CalendarFinder() {
     setResult(null);
 
     try {
-      // 実際のAPI呼び出し
-      const response = await fetch("/api/calendar/availability", {
+      // プロバイダーに応じたAPI呼び出し
+      const endpoint = calendarProvider === "google"
+        ? "/api/calendar/availability"
+        : "/api/calendar/availability-microsoft";
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -128,8 +134,9 @@ export default function CalendarFinder() {
         const data = await response.json();
         if (data.needsReauth) {
           setIsAuthenticated(false);
-          alert("カレンダーへのアクセス権限が必要です。再度ログインしてください。");
-          await handleGoogleAuth();
+          const providerName = calendarProvider === "google" ? "Googleカレンダー" : "Outlookカレンダー";
+          alert(`${providerName}へのアクセス権限が必要です。再度ログインしてください。`);
+          await handleCalendarAuth();
         }
         setLoading(false);
         return;
@@ -421,7 +428,7 @@ export default function CalendarFinder() {
           </p>
         </div>
 
-        {/* Google認証ボタン - 認証チェック完了後のみ表示 */}
+        {/* カレンダープロバイダー選択 & 認証ボタン - 認証チェック完了後のみ表示 */}
         {!authChecking && !isAuthenticated && (
           <div style={{
             background: "white",
@@ -431,10 +438,59 @@ export default function CalendarFinder() {
             marginBottom: 16
           }}>
             <p style={{ fontSize: 14, color: "#475569", marginBottom: 12 }}>
-              Googleカレンダーと連携して、実際の空き時間を表示します
+              カレンダーと連携して、実際の空き時間を表示します
             </p>
+
+            {/* プロバイダー選択 */}
+            <div style={{
+              display: "flex",
+              gap: 8,
+              marginBottom: 12,
+              background: "#f8fafc",
+              padding: 4,
+              borderRadius: 8,
+            }}>
+              <button
+                onClick={() => setCalendarProvider("google")}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  borderRadius: 6,
+                  background: calendarProvider === "google" ? "white" : "transparent",
+                  color: calendarProvider === "google" ? "#0f172a" : "#64748b",
+                  border: calendarProvider === "google" ? "1px solid #e5e7eb" : "none",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  transition: "all 0.2s",
+                  boxShadow: calendarProvider === "google" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                }}
+              >
+                Google
+              </button>
+              <button
+                onClick={() => setCalendarProvider("microsoft")}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  borderRadius: 6,
+                  background: calendarProvider === "microsoft" ? "white" : "transparent",
+                  color: calendarProvider === "microsoft" ? "#0f172a" : "#64748b",
+                  border: calendarProvider === "microsoft" ? "1px solid #e5e7eb" : "none",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  transition: "all 0.2s",
+                  boxShadow: calendarProvider === "microsoft" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                }}
+              >
+                Outlook
+              </button>
+            </div>
+
+            {/* 認証ボタン */}
             <button
-              onClick={handleGoogleAuth}
+              onClick={handleCalendarAuth}
               disabled={authLoading}
               style={{
                 width: "100%",
@@ -449,7 +505,11 @@ export default function CalendarFinder() {
                 transition: "all 0.2s"
               }}
             >
-              {authLoading ? "認証中..." : "Googleカレンダーと連携"}
+              {authLoading
+                ? "認証中..."
+                : calendarProvider === "google"
+                ? "Googleカレンダーと連携"
+                : "Outlookカレンダーと連携"}
             </button>
           </div>
         )}
