@@ -162,24 +162,70 @@ export default function CalendarFinder() {
     }
   };
 
+  // 長い空き時間を所要時間単位で細分化する
+  const splitLongSlots = (slots: Slot[], durationMin: number): Slot[] => {
+    const splitSlots: Slot[] = [];
+
+    slots.forEach(slot => {
+      const [startHour, startMin] = slot.start.split(":").map(Number);
+      const [endHour, endMin] = slot.end.split(":").map(Number);
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+      const totalDuration = endMinutes - startMinutes;
+
+      // 所要時間より長い枠を細分化
+      if (totalDuration > durationMin) {
+        let currentStart = startMinutes;
+        while (currentStart + durationMin <= endMinutes) {
+          const currentEnd = currentStart + durationMin;
+          splitSlots.push({
+            start: `${String(Math.floor(currentStart / 60)).padStart(2, "0")}:${String(currentStart % 60).padStart(2, "0")}`,
+            end: `${String(Math.floor(currentEnd / 60)).padStart(2, "0")}:${String(currentEnd % 60).padStart(2, "0")}`,
+          });
+          currentStart = currentEnd;
+        }
+      } else if (totalDuration === durationMin) {
+        // ちょうど所要時間の枠はそのまま
+        splitSlots.push(slot);
+      }
+    });
+
+    return splitSlots;
+  };
+
   // 所要時間でフィルタリングした結果を取得
   const getFilteredResult = (): DaySlots[] | null => {
     if (!result || !durationMin) return result;
 
-    return result.map(day => {
-      // 各日の枠を所要時間以上のものだけにフィルタ
-      const filteredSlots = day.slots.filter(slot => {
-        const [startHour, startMin] = slot.start.split(":").map(Number);
-        const [endHour, endMin] = slot.end.split(":").map(Number);
-        const durationInMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin);
-        return durationInMinutes >= durationMin;
-      });
+    // 現在時刻（JST）を取得
+    const nowJST = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const todayStr = nowJST.toISOString().split("T")[0];
+    const currentHour = nowJST.getUTCHours();
 
-      return {
-        ...day,
-        slots: filteredSlots
-      };
-    });
+    return result
+      .map(day => {
+        // 当日かつ午後以降（12時以降）の場合はスキップ
+        if (day.date === todayStr && currentHour >= 12) {
+          return null;
+        }
+
+        // 各日の枠を所要時間以上のものだけにフィルタ
+        const filteredSlots = day.slots.filter(slot => {
+          const [startHour, startMin] = slot.start.split(":").map(Number);
+          const [endHour, endMin] = slot.end.split(":").map(Number);
+          const durationInMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+          return durationInMinutes >= durationMin;
+        });
+
+        // 長い枠を細分化
+        const splitSlots = splitLongSlots(filteredSlots, durationMin);
+
+        return {
+          ...day,
+          slots: splitSlots
+        };
+      })
+      .filter((day): day is DaySlots => day !== null); // nullを除外
   };
 
   const formatResultText = (): string => {
