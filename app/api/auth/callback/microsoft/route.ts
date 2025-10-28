@@ -4,9 +4,15 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
+  console.log("🔍 Microsoft callback endpoint hit!");
+  console.log("🔍 Full URL:", request.url);
+
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get("code");
   const error = searchParams.get("error");
+
+  console.log("🔍 Code:", code ? "exists" : "missing");
+  console.log("🔍 Error:", error || "none");
 
   if (error) {
     console.error("Microsoft OAuth error:", error);
