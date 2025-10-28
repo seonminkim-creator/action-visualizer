@@ -23,7 +23,8 @@ export async function GET(request: NextRequest) {
   authUrl.searchParams.append("redirect_uri", redirectUri);
   authUrl.searchParams.append("response_mode", "query");
   authUrl.searchParams.append("scope", "offline_access Calendars.Read User.Read");
-  authUrl.searchParams.append("prompt", "consent");
+  // prompt=select_account: ユーザーに管理者承認を求めず、アカウント選択のみ促す
+  authUrl.searchParams.append("prompt", "select_account");
 
   return NextResponse.json({ url: authUrl.toString(), redirectUri });
 }
