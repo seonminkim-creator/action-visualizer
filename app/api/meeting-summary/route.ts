@@ -21,22 +21,26 @@ type MeetingSummary = {
 
 // 長い文字起こしを要約する関数（第1段階）
 async function summarizeTranscript(transcript: string, apiKey: string): Promise<string> {
-  const SUMMARIZE_PROMPT = `以下の会議の文字起こしを、重要な内容を保ちながら簡潔に要約してください。
+  // 超長文の場合はさらに積極的に要約
+  const isVeryLong = transcript.length > 15000;
+  const targetRatio = isVeryLong ? "20%" : "30%";
+
+  const SUMMARIZE_PROMPT = `以下の会議の文字起こしを、重要な内容を保ちながら**極めて簡潔**に要約してください。
 
 【要約のルール】
-1. 会議の目的や背景を含める
-2. 主な議論内容を箇条書きで記載
+1. 会議の目的や背景を1-2文で記載
+2. 主な議論内容を3-5個の箇条書きで記載（冗長な表現を避ける）
 3. 決定事項やTODOは必ず含める
-4. 参加者名や担当者名は正確に記載
+4. 参加者名や担当者名は省略せず記載
 5. 数字や日付などの具体的な情報は省略しない
-6. 要約後の文字数は元の30-40%程度を目安にする
+6. **要約後の文字数は元の${targetRatio}程度を目安にする（非常に短く）**
 
 【会議の文字起こし】
 ${transcript}
 
 上記を要約してください。`;
 
-  console.log(`📝 第1段階: 文字起こしを要約中...（${transcript.length}文字）`);
+  console.log(`📝 第1段階: 文字起こしを要約中...（${transcript.length}文字 → 目標${targetRatio}）`);
 
   try {
     const response = await fetch(
@@ -47,13 +51,13 @@ ${transcript}
         body: JSON.stringify({
           contents: [{ parts: [{ text: SUMMARIZE_PROMPT }] }],
           generationConfig: {
-            temperature: 0.3,
-            topP: 0.9,
-            topK: 30,
-            maxOutputTokens: 3000,
+            temperature: 0.2, // より決定的に
+            topP: 0.8,
+            topK: 20,
+            maxOutputTokens: isVeryLong ? 2000 : 3000, // 超長文は出力も制限
           },
         }),
-        signal: AbortSignal.timeout(35000), // 35秒タイムアウト（第1段階：要約）
+        signal: AbortSignal.timeout(50000), // 50秒タイムアウト（第1段階：要約）
       }
     );
 
@@ -189,7 +193,7 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
                 temperature: 0.2, // さらに低く設定して高速化
                 topP: 0.9,
                 topK: 30,
-                maxOutputTokens: 2048, // さらにトークン数を削減
+                maxOutputTokens: 3072, // トークン数を増やして完全な出力を保証
                 responseMimeType: "application/json",
                 responseSchema: {
                   type: "object",
@@ -245,7 +249,7 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
                 }
               },
             }),
-            signal: AbortSignal.timeout(40000), // 40秒タイムアウト（第2段階：議事録生成）
+            signal: AbortSignal.timeout(50000), // 50秒タイムアウト（第2段階：議事録生成）
           }
         );
 
