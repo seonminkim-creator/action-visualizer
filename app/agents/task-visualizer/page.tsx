@@ -540,7 +540,7 @@ export default function ActionVisualizer() {
         )}
 
         <p style={{ marginTop: 20, fontSize: 11, color: "#64748b", textAlign: "center" }}>
-          タスク整理くん - AIが文章からやるべきことを整理します
+          タスク整理くん - やるべきことを可視化
         </p>
       </div>
     </div>

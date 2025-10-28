@@ -405,7 +405,7 @@ export default function CalendarFinder() {
             )}
           </div>
           <p style={{ color: "#475569", fontSize: 13, margin: 0 }}>
-            {loading ? "空き時間を取得中です…" : "期間を選んで空き時間を可視化"}
+            {loading ? "空き時間を取得中です…" : "空き時間をすぐ可視化"}
           </p>
         </div>
 
