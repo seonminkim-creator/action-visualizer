@@ -81,6 +81,10 @@ export default function CalendarFinder() {
         const data = await response.json();
         if (data.authenticated) {
           setIsAuthenticated(true);
+          // 認証されているプロバイダーをセット
+          if (data.provider) {
+            setCalendarProvider(data.provider);
+          }
         }
       } catch (error) {
         console.log("認証チェックエラー:", error);
