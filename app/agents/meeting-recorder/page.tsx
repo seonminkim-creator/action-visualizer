@@ -787,20 +787,22 @@ export default function MeetingRecorder() {
             alignItems: "center",
             marginTop: 8,
             fontSize: 12,
-            color: transcript.length > 5000 ? "#dc2626" : "#64748b"
+            color: transcript.length > 5000 ? "#d97706" : "#64748b"
           }}>
             <span>
-              {transcript.length}文字 {transcript.length > 5000 && "（5000文字を超えると自動的に短縮されます）"}
+              {transcript.length}文字
+              {transcript.length > 5000 && " （2段階処理で要約→議事録化します）"}
             </span>
             {transcript.length > 5000 && (
               <span style={{
                 padding: "2px 8px",
-                background: "#fee2e2",
-                color: "#dc2626",
+                background: "#fef3c7",
+                color: "#d97706",
                 borderRadius: 4,
-                fontWeight: 600
+                fontWeight: 600,
+                fontSize: 11
               }}>
-                長すぎます
+                2段階処理
               </span>
             )}
           </div>

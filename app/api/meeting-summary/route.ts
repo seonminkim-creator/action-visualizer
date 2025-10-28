@@ -19,6 +19,58 @@ type MeetingSummary = {
   detailedMinutes: string;
 };
 
+// 長い文字起こしを要約する関数（第1段階）
+async function summarizeTranscript(transcript: string, apiKey: string): Promise<string> {
+  const SUMMARIZE_PROMPT = `以下の会議の文字起こしを、重要な内容を保ちながら簡潔に要約してください。
+
+【要約のルール】
+1. 会議の目的や背景を含める
+2. 主な議論内容を箇条書きで記載
+3. 決定事項やTODOは必ず含める
+4. 参加者名や担当者名は正確に記載
+5. 数字や日付などの具体的な情報は省略しない
+6. 要約後の文字数は元の30-40%程度を目安にする
+
+【会議の文字起こし】
+${transcript}
+
+上記を要約してください。`;
+
+  console.log(`📝 第1段階: 文字起こしを要約中...（${transcript.length}文字）`);
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: SUMMARIZE_PROMPT }] }],
+          generationConfig: {
+            temperature: 0.3,
+            topP: 0.9,
+            topK: 30,
+            maxOutputTokens: 3000,
+          },
+        }),
+        signal: AbortSignal.timeout(20000), // 20秒タイムアウト
+      }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      const summarized = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+      console.log(`✅ 第1段階完了: ${summarized.length}文字に要約`);
+      return summarized;
+    }
+
+    throw new Error(`要約失敗: ${response.status}`);
+  } catch (error) {
+    console.error("要約エラー:", error);
+    throw error;
+  }
+}
+
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
 
@@ -32,15 +84,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 文字数制限: 5000文字まで（処理時間短縮のため）
-    const maxLength = 5000;
-    let processedTranscript = transcript.trim();
-
-    if (processedTranscript.length > maxLength) {
-      console.log(`⚠️ 文字数制限: ${processedTranscript.length}文字 → ${maxLength}文字に短縮`);
-      processedTranscript = processedTranscript.substring(0, maxLength) + "\n\n[※文字数制限により以降の内容は省略されました]";
-    }
-
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
@@ -50,6 +93,35 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
+
+    // 2段階処理: 5000文字を超える場合は要約してから議事録化
+    const characterThreshold = 5000;
+    let processedTranscript = transcript.trim();
+    let usedTwoStage = false;
+
+    if (processedTranscript.length > characterThreshold) {
+      console.log(`🔄 2段階処理開始: ${processedTranscript.length}文字 > ${characterThreshold}文字`);
+      usedTwoStage = true;
+
+      try {
+        processedTranscript = await summarizeTranscript(processedTranscript, apiKey);
+        console.log(`📊 第1段階（要約）完了: ${processedTranscript.length}文字`);
+      } catch (error) {
+        console.error("要約失敗:", error);
+        return NextResponse.json(
+          {
+            error: "文字起こしの要約に失敗しました",
+            details: "会議内容が長すぎて処理できませんでした。もう少し短い内容で再度お試しください。",
+            processingTime: `${((Date.now() - startTime) / 1000).toFixed(1)}秒`,
+          },
+          { status: 500 }
+        );
+      }
+    } else {
+      console.log(`✅ 直接処理: ${processedTranscript.length}文字 ≤ ${characterThreshold}文字`);
+    }
+
+    console.log(`📝 第${usedTwoStage ? '2' : '1'}段階: 議事録生成中...`);
 
     const SYSTEM_PROMPT = `あなたは会議の議事録を作成する専門AIアシスタントです。
 
