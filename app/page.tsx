@@ -298,13 +298,13 @@ export default function Home() {
                   {agent.badge && (
                     <span style={{
                       position: "absolute",
-                      top: 8,
-                      right: 8,
-                      padding: "4px 12px",
-                      borderRadius: 20,
+                      top: 6,
+                      right: 6,
+                      padding: "clamp(2px, 1vw, 4px) clamp(6px, 2vw, 10px)",
+                      borderRadius: 12,
                       background: "#dcfce7",
                       color: "#16a34a",
-                      fontSize: 12,
+                      fontSize: "clamp(9px, 2vw, 11px)",
                       fontWeight: 600
                     }}>
                       {agent.badge}
@@ -455,13 +455,13 @@ export default function Home() {
                   }}>
                     <span style={{
                       position: "absolute",
-                      top: 8,
-                      right: 8,
-                      padding: "4px 12px",
-                      borderRadius: 20,
+                      top: 6,
+                      right: 6,
+                      padding: "clamp(2px, 1vw, 4px) clamp(6px, 2vw, 10px)",
+                      borderRadius: 12,
                       background: "#fef3c7",
                       color: "#d97706",
-                      fontSize: 12,
+                      fontSize: "clamp(9px, 2vw, 11px)",
                       fontWeight: 600
                     }}>
                       Coming Soon
