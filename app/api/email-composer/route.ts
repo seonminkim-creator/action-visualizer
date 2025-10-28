@@ -132,9 +132,9 @@ ${additionalInfo ? `【添削指示】\n${additionalInfo}\n` : ""}
       },
     };
 
-    // エクスポネンシャルバックオフでリトライ（最適化版）
+    // エクスポネンシャルバックオフでリトライ（強化版）
     let lastError = null;
-    const maxRetries = 3; // リトライ回数を削減
+    const maxRetries = 5; // リトライ回数を増やす
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -144,7 +144,7 @@ ${additionalInfo ? `【添削指示】\n${additionalInfo}\n` : ""}
             "Content-Type": "application/json",
           },
           body: JSON.stringify(requestBody),
-          signal: AbortSignal.timeout(40000), // 40秒タイムアウト
+          signal: AbortSignal.timeout(50000), // 50秒タイムアウト
         });
 
         if (response.ok) {
@@ -164,7 +164,7 @@ ${additionalInfo ? `【添削指示】\n${additionalInfo}\n` : ""}
 
         // 503エラーの場合、エクスポネンシャルバックオフでリトライ
         if (response.status === 503 && attempt < maxRetries) {
-          const backoffSeconds = attempt; // 短縮版: 1秒 → 2秒
+          const backoffSeconds = Math.pow(2, attempt); // 2秒 → 4秒 → 8秒 → 16秒 → 32秒
           console.log(
             `⏳ Gemini APIリトライ ${attempt}/${maxRetries} (503エラー、${backoffSeconds}秒後に再試行)`
           );
@@ -189,7 +189,7 @@ ${additionalInfo ? `【添削指示】\n${additionalInfo}\n` : ""}
         lastError = error;
 
         if (attempt < maxRetries) {
-          const backoffSeconds = attempt; // 短縮版: 1秒 → 2秒
+          const backoffSeconds = Math.pow(2, attempt); // 2秒 → 4秒 → 8秒 → 16秒 → 32秒
           console.log(
             `⏳ リトライ中... (${attempt}/${maxRetries}、${backoffSeconds}秒後に再試行)`
           );
