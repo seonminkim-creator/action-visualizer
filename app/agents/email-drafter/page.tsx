@@ -71,7 +71,6 @@ export default function EmailDrafter() {
             </h2>
             <ul style={{ paddingLeft: 24, color: "var(--text-secondary)", lineHeight: 2 }}>
               <li>状況説明からメールテンプレート作成</li>
-              <li>ビジネスメールの文体調整</li>
               <li>よく使うフレーズの提案</li>
               <li>多言語対応(英語・日本語)</li>
             </ul>
