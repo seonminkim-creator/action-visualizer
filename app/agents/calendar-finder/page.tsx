@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import BackToHome from "../../components/BackToHome";
 import { Copy, Calendar } from "lucide-react";
-import { Period, Mode, DaySlots } from "../../types/calendar";
+import { Period, Mode, DaySlots, Slot } from "../../types/calendar";
 import { getMockAvailability, periodLabels } from "../../lib/mockData";
 
 export default function CalendarFinder() {
