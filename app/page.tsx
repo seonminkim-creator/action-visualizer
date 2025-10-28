@@ -47,7 +47,7 @@ const agents: Agent[] = [
   {
     id: "email-composer",
     title: "メール返信叩きくん",
-    description: "メールの作成・返信・添削",
+    description: "メールの作成・返信",
     icon: <Mail size={32} />,
     path: "/agents/email-composer",
     gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
