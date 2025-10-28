@@ -37,10 +37,16 @@ export default function EmailComposer() {
       setStyleProfile(savedProfile);
     }
 
-    const savedUserName = localStorage.getItem("emailUserName");
-    const savedCompanyName = localStorage.getItem("emailCompanyName");
-    if (savedUserName) setUserName(savedUserName);
-    if (savedCompanyName) setCompanyName(savedCompanyName);
+    // グローバル設定を優先的に使用（ホーム画面で設定したもの）
+    const globalUserName = localStorage.getItem("globalUserName");
+    const globalCompanyName = localStorage.getItem("globalCompanyName");
+
+    // フォールバック: 古い個別設定も確認
+    const localUserName = localStorage.getItem("emailUserName");
+    const localCompanyName = localStorage.getItem("emailCompanyName");
+
+    setUserName(globalUserName || localUserName || "");
+    setCompanyName(globalCompanyName || localCompanyName || "");
   }, []);
 
   // カレンダー認証状態を確認
@@ -243,8 +249,14 @@ export default function EmailComposer() {
       alert("名前と会社名の両方を入力してください");
       return;
     }
+    // グローバル設定に保存（ホーム画面と同期）
+    localStorage.setItem("globalUserName", userName.trim());
+    localStorage.setItem("globalCompanyName", companyName.trim());
+
+    // 互換性のため個別設定も保存
     localStorage.setItem("emailUserName", userName.trim());
     localStorage.setItem("emailCompanyName", companyName.trim());
+
     alert("✅ ユーザー設定を保存しました");
   }
 

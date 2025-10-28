@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { CheckSquare, Calendar, Mail, MessageSquare, Sprout } from "lucide-react";
+import { CheckSquare, Calendar, Mail, MessageSquare, Sprout, Settings, User } from "lucide-react";
+import { useState, useEffect } from "react";
 
 type Agent = {
   id: string;
@@ -65,6 +66,44 @@ const agents: Agent[] = [
 ];
 
 export default function Home() {
+  const [showModal, setShowModal] = useState<boolean>(false);
+  const [userName, setUserName] = useState<string>("");
+  const [companyName, setCompanyName] = useState<string>("");
+  const [hasSettings, setHasSettings] = useState<boolean>(true);
+
+  // 初回起動時にlocalStorageをチェック
+  useEffect(() => {
+    const savedUserName = localStorage.getItem("globalUserName");
+    const savedCompanyName = localStorage.getItem("globalCompanyName");
+
+    if (savedUserName && savedCompanyName) {
+      setUserName(savedUserName);
+      setCompanyName(savedCompanyName);
+      setHasSettings(true);
+    } else {
+      // 設定がない場合はモーダルを表示
+      setShowModal(true);
+      setHasSettings(false);
+    }
+  }, []);
+
+  function saveSettings() {
+    if (!userName.trim() || !companyName.trim()) {
+      alert("名前と会社名の両方を入力してください");
+      return;
+    }
+    localStorage.setItem("globalUserName", userName.trim());
+    localStorage.setItem("globalCompanyName", companyName.trim());
+
+    // 既存のemail-composer用の設定も更新（互換性のため）
+    localStorage.setItem("emailUserName", userName.trim());
+    localStorage.setItem("emailCompanyName", companyName.trim());
+
+    setHasSettings(true);
+    setShowModal(false);
+    alert("✅ ユーザー設定を保存しました");
+  }
+
   return (
     <div style={{ minHeight: "100vh", padding: "16px", background: "#f8fafc" }}>
       <style>{`
@@ -84,7 +123,42 @@ export default function Home() {
 
       <div style={{ margin: "0 auto", maxWidth: 1200, paddingTop: "40px" }}>
         {/* ヘッダー */}
-        <div style={{ textAlign: "center", marginBottom: 48 }}>
+        <div style={{ position: "relative", textAlign: "center", marginBottom: 48 }}>
+          {/* 設定ボタン */}
+          {hasSettings && (
+            <button
+              onClick={() => setShowModal(true)}
+              style={{
+                position: "absolute",
+                top: 0,
+                right: 0,
+                padding: "10px 16px",
+                borderRadius: 8,
+                background: "white",
+                border: "1px solid #e5e7eb",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 14,
+                color: "#475569",
+                fontWeight: 500,
+                transition: "all 0.2s"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "#667eea";
+                e.currentTarget.style.color = "#667eea";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "#e5e7eb";
+                e.currentTarget.style.color = "#475569";
+              }}
+            >
+              <User size={16} />
+              {userName}
+            </button>
+          )}
+
           <h1 style={{
             fontSize: "clamp(24px, 5vw, 40px)",
             fontWeight: 700,
@@ -249,6 +323,160 @@ export default function Home() {
             );
           })}
         </div>
+
+        {/* ユーザー設定モーダル */}
+        {showModal && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0, 0, 0, 0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+              padding: 16
+            }}
+            onClick={(e) => {
+              // 背景クリック時は初期設定済みの場合のみ閉じる
+              if (hasSettings && e.target === e.currentTarget) {
+                setShowModal(false);
+              }
+            }}
+          >
+            <div
+              style={{
+                background: "white",
+                borderRadius: 16,
+                padding: 32,
+                maxWidth: 480,
+                width: "100%",
+                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                <div
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 12,
+                    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "white"
+                  }}
+                >
+                  <User size={24} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: 20, fontWeight: 600, color: "#0f172a", margin: 0 }}>
+                    {hasSettings ? "ユーザー設定" : "初期設定"}
+                  </h2>
+                  <p style={{ fontSize: 14, color: "#64748b", margin: 0 }}>
+                    {hasSettings ? "設定を変更できます" : "はじめに、あなたの情報を入力してください"}
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#0f172a",
+                    marginBottom: 8
+                  }}
+                >
+                  会社名 <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  placeholder="例: 株式会社PECO"
+                  style={{
+                    width: "100%",
+                    padding: 12,
+                    borderRadius: 8,
+                    border: "1px solid #d1d5db",
+                    fontSize: 14,
+                    boxSizing: "border-box"
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: 24 }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#0f172a",
+                    marginBottom: 8
+                  }}
+                >
+                  名前 <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  placeholder="例: 信畑"
+                  style={{
+                    width: "100%",
+                    padding: 12,
+                    borderRadius: 8,
+                    border: "1px solid #d1d5db",
+                    fontSize: 14,
+                    boxSizing: "border-box"
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: 12 }}>
+                {hasSettings && (
+                  <button
+                    onClick={() => setShowModal(false)}
+                    style={{
+                      flex: 1,
+                      padding: "12px 24px",
+                      borderRadius: 8,
+                      background: "white",
+                      border: "1px solid #d1d5db",
+                      color: "#64748b",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                      fontSize: 14
+                    }}
+                  >
+                    キャンセル
+                  </button>
+                )}
+                <button
+                  onClick={saveSettings}
+                  style={{
+                    flex: 1,
+                    padding: "12px 24px",
+                    borderRadius: 8,
+                    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                    color: "white",
+                    border: "none",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    fontSize: 14
+                  }}
+                >
+                  保存
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* フッター */}
         <div style={{ marginTop: 48, textAlign: "center" }}>
