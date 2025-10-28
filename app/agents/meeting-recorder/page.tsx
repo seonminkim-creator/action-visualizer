@@ -780,6 +780,31 @@ export default function MeetingRecorder() {
             }}
           />
 
+          {/* 文字数カウンター */}
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: 8,
+            fontSize: 12,
+            color: transcript.length > 5000 ? "#dc2626" : "#64748b"
+          }}>
+            <span>
+              {transcript.length}文字 {transcript.length > 5000 && "（5000文字を超えると自動的に短縮されます）"}
+            </span>
+            {transcript.length > 5000 && (
+              <span style={{
+                padding: "2px 8px",
+                background: "#fee2e2",
+                color: "#dc2626",
+                borderRadius: 4,
+                fontWeight: 600
+              }}>
+                長すぎます
+              </span>
+            )}
+          </div>
+
           <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
             <button
               onClick={generateSummary}

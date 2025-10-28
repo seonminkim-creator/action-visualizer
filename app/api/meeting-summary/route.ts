@@ -32,6 +32,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 文字数制限: 5000文字まで（処理時間短縮のため）
+    const maxLength = 5000;
+    let processedTranscript = transcript.trim();
+
+    if (processedTranscript.length > maxLength) {
+      console.log(`⚠️ 文字数制限: ${processedTranscript.length}文字 → ${maxLength}文字に短縮`);
+      processedTranscript = processedTranscript.substring(0, maxLength) + "\n\n[※文字数制限により以降の内容は省略されました]";
+    }
+
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
@@ -99,16 +108,16 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
                 {
                   parts: [
                     {
-                      text: `${SYSTEM_PROMPT}\n\n【会議の内容】\n${transcript.trim()}`,
+                      text: `${SYSTEM_PROMPT}\n\n【会議の内容】\n${processedTranscript}`,
                     },
                   ],
                 },
               ],
               generationConfig: {
-                temperature: 0.3,
-                topP: 0.95,
-                topK: 40,
-                maxOutputTokens: 4096, // トークン数を削減
+                temperature: 0.2, // さらに低く設定して高速化
+                topP: 0.9,
+                topK: 30,
+                maxOutputTokens: 2048, // さらにトークン数を削減
                 responseMimeType: "application/json",
                 responseSchema: {
                   type: "object",
@@ -164,7 +173,7 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
                 }
               },
             }),
-            signal: AbortSignal.timeout(30000), // 30秒タイムアウト
+            signal: AbortSignal.timeout(25000), // 25秒タイムアウト（より積極的に）
           }
         );
 
