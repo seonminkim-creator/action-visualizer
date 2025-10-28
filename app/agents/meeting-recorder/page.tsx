@@ -21,6 +21,7 @@ type MeetingSummary = {
 export default function MeetingRecorder() {
   const [transcript, setTranscript] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
+  const [processingStage, setProcessingStage] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [processingTime, setProcessingTime] = useState<string | null>(null);
@@ -289,6 +290,21 @@ export default function MeetingRecorder() {
     setProcessingTime(null);
     setResult(null);
 
+    // 文字数に応じて処理ステージを表示
+    const charCount = transcript.trim().length;
+    if (charCount > 5000) {
+      setProcessingStage("第1段階: 会議内容を要約中... (約20秒)");
+
+      // 20秒後に第2段階に切り替え
+      setTimeout(() => {
+        if (loading) {
+          setProcessingStage("第2段階: 議事録を生成中... (約25秒)");
+        }
+      }, 20000);
+    } else {
+      setProcessingStage("議事録を生成中... (最大45秒)");
+    }
+
     try {
       const res = await fetch("/api/meeting-summary", {
         method: "POST",
@@ -350,6 +366,7 @@ export default function MeetingRecorder() {
       setErrorDetails("ネットワーク接続を確認してください。");
     } finally {
       setLoading(false);
+      setProcessingStage("");
     }
   }
 
@@ -432,7 +449,9 @@ export default function MeetingRecorder() {
             </button>
           </div>
           <p style={{ color: "#64748b", fontSize: 14, margin: 0, paddingLeft: 60 }}>
-            {loading
+            {loading && processingStage
+              ? processingStage
+              : loading
               ? "議事録を作成中...（最大60秒程度かかる場合があります）"
               : "会議の内容から議事録とTODOを自動生成"}
           </p>
