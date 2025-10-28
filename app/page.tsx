@@ -398,7 +398,7 @@ export default function Home() {
                   type="text"
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
-                  placeholder="例: 株式会社PECO"
+                  placeholder="例: 株式会社〇〇"
                   style={{
                     width: "100%",
                     padding: 12,
@@ -426,7 +426,7 @@ export default function Home() {
                   type="text"
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
-                  placeholder="例: 信畑"
+                  placeholder="例: 田中"
                   style={{
                     width: "100%",
                     padding: 12,
