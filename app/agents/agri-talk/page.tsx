@@ -251,7 +251,7 @@ export default function AgriTalkAssistant() {
           </p>
         </div>
 
-        {/* 利用シーン説明 */}
+        {/* 使い方説明 */}
         {!result && !loading && (
           <div
             style={{
@@ -264,19 +264,24 @@ export default function AgriTalkAssistant() {
           >
             <div
               style={{
-                fontSize: 12,
-                color: "var(--text-secondary)",
-                lineHeight: 1.7,
+                fontSize: 13,
+                color: "var(--foreground)",
+                lineHeight: 1.8,
+                fontWeight: 600,
+                marginBottom: 8,
               }}
             >
-              <div style={{ marginBottom: 6 }}>
-                <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>🌾 訪問前準備</span>
-                　地域の天気・市況・安全情報などをまとめて確認
-              </div>
-              <div>
-                <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>💬 アイスブレイク</span>
-                　地域の話題や会話ヒントで関係構築をサポート
-              </div>
+              📝 使い方
+            </div>
+            <div
+              style={{
+                fontSize: 12,
+                color: "var(--text-secondary)",
+                lineHeight: 1.8,
+                paddingLeft: 8,
+              }}
+            >
+              「訪問地域」と「作物」を入力 → カテゴリを選択 → <strong>3週間以内の情報から話すネタを出力</strong>
             </div>
           </div>
         )}

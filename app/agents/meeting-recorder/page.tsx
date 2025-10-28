@@ -574,11 +574,26 @@ export default function MeetingRecorder() {
               border: "1px solid var(--card-border)",
             }}
           >
-            <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.7 }}>
-              <div style={{ marginBottom: 6 }}>
-                <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>📋 使い方</span>
-                　会議の内容をテキストで入力すると、議事録とTODOを自動生成します
-              </div>
+            <div
+              style={{
+                fontSize: 13,
+                color: "var(--foreground)",
+                lineHeight: 1.8,
+                fontWeight: 600,
+                marginBottom: 8,
+              }}
+            >
+              📝 使い方
+            </div>
+            <div
+              style={{
+                fontSize: 12,
+                color: "var(--text-secondary)",
+                lineHeight: 1.8,
+                paddingLeft: 8,
+              }}
+            >
+              会議内容を入力（録音 or テキスト貼り付け） → 「議事録を作成」 → <strong>サマリー・TODO・詳細議事録を出力</strong>
             </div>
           </div>
         )}

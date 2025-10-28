@@ -603,6 +603,41 @@ export default function CalendarFinder() {
           </p>
         </div>
 
+        {/* 使い方説明 */}
+        {isAuthenticated && !result && !loading && (
+          <div
+            style={{
+              background: "var(--card-bg)",
+              borderRadius: 8,
+              padding: "12px 16px",
+              marginBottom: 16,
+              border: "1px solid var(--card-border)",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 13,
+                color: "var(--foreground)",
+                lineHeight: 1.8,
+                fontWeight: 600,
+                marginBottom: 8,
+              }}
+            >
+              📝 使い方
+            </div>
+            <div
+              style={{
+                fontSize: 12,
+                color: "var(--text-secondary)",
+                lineHeight: 1.8,
+                paddingLeft: 8,
+              }}
+            >
+              期間・時間を選択 → 「空き時間を検索」 → <strong>訪問用 or メール用の候補日を出力</strong>
+            </div>
+          </div>
+        )}
+
         {/* カレンダープロバイダー選択 - 未認証の場合のみ表示 */}
         {!authChecking && !isAuthenticated && (
           <div style={{

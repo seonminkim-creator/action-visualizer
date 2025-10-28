@@ -362,6 +362,41 @@ export default function EmailComposer() {
           </p>
         </div>
 
+        {/* 使い方説明 */}
+        {!result && !loading && activeTab === "composer" && (
+          <div
+            style={{
+              background: "var(--card-bg)",
+              borderRadius: 8,
+              padding: "12px 16px",
+              marginBottom: 16,
+              border: "1px solid var(--card-border)",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 13,
+                color: "var(--foreground)",
+                lineHeight: 1.8,
+                fontWeight: 600,
+                marginBottom: 8,
+              }}
+            >
+              📝 使い方
+            </div>
+            <div
+              style={{
+                fontSize: 12,
+                color: "var(--text-secondary)",
+                lineHeight: 1.8,
+                paddingLeft: 8,
+              }}
+            >
+              相手のメールや状況を入力 → タスク選択（返信・新規作成・添削） → <strong>ビジネスメール文を出力</strong>
+            </div>
+          </div>
+        )}
+
         {/* タブ */}
         <div style={{ display: "flex", gap: 8, marginBottom: 16, borderBottom: "2px solid var(--card-border)" }}>
           <button

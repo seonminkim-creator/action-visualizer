@@ -256,7 +256,7 @@ export default function ActionVisualizer() {
           </p>
         </div>
 
-        {/* 利用シーン説明 */}
+        {/* 使い方説明 */}
         {!result && !loading && (
           <div style={{
             background: "var(--card-bg)",
@@ -265,19 +265,26 @@ export default function ActionVisualizer() {
             marginBottom: 12,
             border: "1px solid var(--card-border)"
           }}>
-            <div style={{
-              fontSize: 12,
-              color: "var(--text-secondary)",
-              lineHeight: 1.7
-            }}>
-              <div style={{ marginBottom: 6 }}>
-                <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>📧 顧客メール</span>
-                　依頼内容と期日を抜き出し、やるべきことを教えてくれる
-              </div>
-              <div>
-                <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>💬 上司の指示</span>
-                　長文チャットから要点と期限を整理、確認事項を可視化
-              </div>
+            <div
+              style={{
+                fontSize: 13,
+                color: "var(--foreground)",
+                lineHeight: 1.8,
+                fontWeight: 600,
+                marginBottom: 8,
+              }}
+            >
+              📝 使い方
+            </div>
+            <div
+              style={{
+                fontSize: 12,
+                color: "var(--text-secondary)",
+                lineHeight: 1.8,
+                paddingLeft: 8,
+              }}
+            >
+              メールや会議内容を貼り付け → 「タスクを整理」 → <strong>優先度・担当者・期日付きのタスクリストを出力</strong>
             </div>
           </div>
         )}
