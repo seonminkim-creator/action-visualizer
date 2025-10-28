@@ -4,9 +4,12 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const maxDuration = 60; // Vercel Pro: 最大60秒
 
+type TopicCategory = "weather" | "market" | "subsidy" | "safety" | "events";
+
 type AgriTalkInput = {
   region: string;
   crop?: string;
+  categories?: TopicCategory[];
 };
 
 // Google Custom Search APIを使った検索
@@ -192,7 +195,7 @@ export async function POST(req: NextRequest) {
   const startTime = Date.now();
 
   try {
-    const { region, crop } = (await req.json()) as AgriTalkInput;
+    const { region, crop, categories } = (await req.json()) as AgriTalkInput;
 
     if (!region || !region.trim()) {
       return NextResponse.json(
@@ -200,6 +203,11 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    // カテゴリが指定されていない場合は全カテゴリ
+    const selectedCategories = categories && categories.length > 0
+      ? categories
+      : ["weather", "market", "subsidy", "safety", "events"] as TopicCategory[];
 
     const geminiApiKey = process.env.GEMINI_API_KEY;
     const googleSearchApiKey = process.env.GOOGLE_SEARCH_API_KEY;
@@ -213,15 +221,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 検索クエリを自動生成（重要なものに絞る）
-    const queries = [
-      `${region} 天気 予報 病害虫`, // 天気と病害虫を統合
-      crop ? `${crop} 市況 価格` : `${region} 農産物 市況`, // 市況と価格を統合
-      `${region} 補助金 農業 政策`, // 補助金と政策を統合
-      `${region} 獣害 安全`, // 獣害と安全情報を統合
-      `${region} イベント 話題`, // イベントと話題を統合
-    ];
+    // カテゴリに応じて検索クエリを生成
+    const categoryQueries: Record<TopicCategory, string> = {
+      weather: `${region} 天気 予報 病害虫`,
+      market: crop ? `${crop} 市況 価格` : `${region} 農産物 市況`,
+      subsidy: `${region} 補助金 農業 政策`,
+      safety: `${region} 獣害 安全`,
+      events: `${region} イベント 話題`,
+    };
 
+    // 選択されたカテゴリのみクエリを生成
+    const queries = selectedCategories.map(cat => categoryQueries[cat]);
+
+    console.log("🔍 選択されたカテゴリ:", selectedCategories);
     console.log("🔍 検索クエリ:", queries);
 
     // 並列検索で高速化（待機時間なし）

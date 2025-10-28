@@ -4,14 +4,24 @@ import { Loader2, Sprout } from "lucide-react";
 import BackToHome from "../../components/BackToHome";
 import ReactMarkdown from "react-markdown";
 
+type TopicCategory = "weather" | "market" | "subsidy" | "safety" | "events";
+
 type AgriTalkInput = {
   region: string;
   crop?: string;
+  categories?: TopicCategory[];
 };
 
 export default function AgriTalkAssistant() {
   const [region, setRegion] = useState<string>("");
   const [crop, setCrop] = useState<string>("");
+  const [selectedCategories, setSelectedCategories] = useState<TopicCategory[]>([
+    "weather",
+    "market",
+    "subsidy",
+    "safety",
+    "events",
+  ]); // デフォルトは全選択
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
@@ -21,6 +31,11 @@ export default function AgriTalkAssistant() {
   async function searchTopics(): Promise<void> {
     if (!region.trim()) {
       setError("訪問地域を入力してください");
+      return;
+    }
+
+    if (selectedCategories.length === 0) {
+      setError("少なくとも1つの話題カテゴリを選択してください");
       return;
     }
 
@@ -37,6 +52,7 @@ export default function AgriTalkAssistant() {
         body: JSON.stringify({
           region: region.trim(),
           crop: crop.trim() || undefined,
+          categories: selectedCategories,
         } as AgriTalkInput),
       });
 
@@ -89,6 +105,24 @@ export default function AgriTalkAssistant() {
       setLoading(false);
     }
   }
+
+  // カテゴリのトグル
+  function toggleCategory(category: TopicCategory) {
+    setSelectedCategories((prev) =>
+      prev.includes(category)
+        ? prev.filter((c) => c !== category)
+        : [...prev, category]
+    );
+  }
+
+  // カテゴリ情報
+  const categories: { id: TopicCategory; label: string; icon: string }[] = [
+    { id: "weather", label: "天気・病害虫", icon: "🌤️" },
+    { id: "market", label: "市況・価格", icon: "📊" },
+    { id: "subsidy", label: "補助金・政策", icon: "💰" },
+    { id: "safety", label: "獣害・安全", icon: "🦌" },
+    { id: "events", label: "イベント・話題", icon: "📅" },
+  ];
 
   return (
     <div style={{ minHeight: "100vh", padding: "16px", background: "#f8fafc" }}>
@@ -307,6 +341,66 @@ export default function AgriTalkAssistant() {
                   boxSizing: "border-box",
                 }}
               />
+            </div>
+
+            {/* カテゴリ選択 */}
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#0f172a",
+                  marginBottom: 8,
+                }}
+              >
+                話題カテゴリ <span style={{ color: "#dc2626" }}>*</span>
+                <span style={{ fontSize: 11, fontWeight: 400, color: "#64748b", marginLeft: 8 }}>
+                  （複数選択可）
+                </span>
+              </label>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8 }}>
+                {categories.map((cat) => (
+                  <label
+                    key={cat.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "8px 12px",
+                      borderRadius: 8,
+                      border: selectedCategories.includes(cat.id)
+                        ? "2px solid #43e97b"
+                        : "1px solid #d1d5db",
+                      background: selectedCategories.includes(cat.id)
+                        ? "#f0fdf4"
+                        : "white",
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                      fontSize: 13,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!selectedCategories.includes(cat.id)) {
+                        e.currentTarget.style.background = "#f9fafb";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!selectedCategories.includes(cat.id)) {
+                        e.currentTarget.style.background = "white";
+                      }
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedCategories.includes(cat.id)}
+                      onChange={() => toggleCategory(cat.id)}
+                      style={{ cursor: "pointer" }}
+                    />
+                    <span>{cat.icon}</span>
+                    <span style={{ fontSize: 12, color: "#334155" }}>{cat.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
 
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
