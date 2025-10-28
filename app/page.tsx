@@ -115,7 +115,10 @@ export default function Home() {
           animation: fadeIn 0.5s ease-out;
         }
 
-        /* モバイル: アイコンのみ表示 */
+        /* モバイル: 2列表示、アイコンのみ表示 */
+        .agents-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
         .mobile-user-button {
           display: flex !important;
         }
@@ -123,10 +126,10 @@ export default function Home() {
           display: none !important;
         }
 
-        /* タブレット: 2列 */
+        /* タブレット: 3列 */
         @media (min-width: 640px) {
           .agents-grid {
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(3, 1fr);
           }
           .mobile-user-button {
             display: none !important;
@@ -136,10 +139,10 @@ export default function Home() {
           }
         }
 
-        /* デスクトップ: 3列 */
+        /* デスクトップ: 4列 */
         @media (min-width: 1024px) {
           .agents-grid {
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
           }
         }
       `}</style>
@@ -245,8 +248,7 @@ export default function Home() {
           className="agents-grid"
           style={{
             display: "grid",
-            gap: 20,
-            gridTemplateColumns: "1fr"
+            gap: 16
           }}
         >
           {agents.map((agent, index) => {
@@ -297,16 +299,16 @@ export default function Home() {
                 {/* アイコン */}
                 <div
                   style={{
-                    width: "clamp(64px, 15vw, 80px)",
-                    height: "clamp(64px, 15vw, 80px)",
-                    borderRadius: 16,
+                    width: "clamp(48px, 12vw, 56px)",
+                    height: "clamp(48px, 12vw, 56px)",
+                    borderRadius: 12,
                     background: agent.gradient,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     color: "white",
-                    marginBottom: 16,
-                    fontSize: "clamp(32px, 8vw, 40px)"
+                    marginBottom: 12,
+                    fontSize: "clamp(24px, 6vw, 28px)"
                   }}
                 >
                   {agent.icon}
@@ -314,10 +316,10 @@ export default function Home() {
 
                 {/* タイトル */}
                 <h2 style={{
-                  fontSize: "clamp(14px, 3.5vw, 18px)",
+                  fontSize: "clamp(13px, 3vw, 15px)",
                   fontWeight: 600,
                   color: "#0f172a",
-                  marginBottom: 8,
+                  marginBottom: 6,
                   margin: 0,
                   wordBreak: "keep-all",
                   overflowWrap: "break-word",
@@ -328,9 +330,9 @@ export default function Home() {
 
                 {/* 説明（1行のみ） */}
                 <p style={{
-                  fontSize: "clamp(11px, 2.5vw, 13px)",
+                  fontSize: "clamp(10px, 2vw, 11px)",
                   color: "#64748b",
-                  lineHeight: 1.4,
+                  lineHeight: 1.3,
                   margin: 0,
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -347,9 +349,9 @@ export default function Home() {
             const cardStyle = {
               position: "relative" as const,
               background: "white",
-              borderRadius: 16,
-              padding: "clamp(20px, 5vw, 28px)",
-              boxShadow: "0 4px 6px rgba(0,0,0,0.07)",
+              borderRadius: 12,
+              padding: "clamp(16px, 4vw, 20px)",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.06)",
               border: "1px solid #e5e7eb",
               textDecoration: "none",
               cursor: isActive ? ("pointer" as const) : ("not-allowed" as const),
