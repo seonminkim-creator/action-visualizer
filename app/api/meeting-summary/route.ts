@@ -98,32 +98,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2段階処理: 5000文字を超える場合は要約してから議事録化
-    const characterThreshold = 5000;
+    // 文字数制限を緩和：30000文字まで直接処理
+    const characterThreshold = 30000;
     let processedTranscript = transcript.trim();
     let usedTwoStage = false;
 
     if (processedTranscript.length > characterThreshold) {
-      console.log(`🔄 2段階処理開始: ${processedTranscript.length}文字 > ${characterThreshold}文字`);
-      usedTwoStage = true;
-
-      try {
-        processedTranscript = await summarizeTranscript(processedTranscript, apiKey);
-        console.log(`📊 第1段階（要約）完了: ${processedTranscript.length}文字`);
-      } catch (error) {
-        console.error("要約失敗:", error);
-        return NextResponse.json(
-          {
-            error: "文字起こしの要約に失敗しました",
-            details: "会議内容が長すぎて処理できませんでした。もう少し短い内容で再度お試しください。",
-            processingTime: `${((Date.now() - startTime) / 1000).toFixed(1)}秒`,
-          },
-          { status: 500 }
-        );
-      }
-    } else {
-      console.log(`✅ 直接処理: ${processedTranscript.length}文字 ≤ ${characterThreshold}文字`);
+      console.log(`⚠️ 文字数超過: ${processedTranscript.length}文字 > ${characterThreshold}文字`);
+      return NextResponse.json(
+        {
+          error: "会議内容が長すぎます",
+          details: `文字数: ${processedTranscript.length}文字。30000文字以下にしてください。`,
+          processingTime: `${((Date.now() - startTime) / 1000).toFixed(1)}秒`,
+        },
+        { status: 400 }
+      );
     }
+
+    console.log(`✅ 直接処理: ${processedTranscript.length}文字 ≤ ${characterThreshold}文字`);
 
     console.log(`📝 第${usedTwoStage ? '2' : '1'}段階: 議事録生成中...`);
 
@@ -193,7 +185,7 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
                 temperature: 0.2, // さらに低く設定して高速化
                 topP: 0.9,
                 topK: 30,
-                maxOutputTokens: 3072, // トークン数を増やして完全な出力を保証
+                maxOutputTokens: 8192, // Gemini 2.5 Proの最大出力トークン数
                 responseMimeType: "application/json",
                 responseSchema: {
                   type: "object",
