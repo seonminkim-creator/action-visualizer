@@ -31,6 +31,7 @@ export default function CalendarFinder() {
   const [showTodayAfternoon, setShowTodayAfternoon] = useState(true); // 午後以降も当日を表示するか
   const [workStartHour, setWorkStartHour] = useState(9); // 営業開始時間
   const [workEndHour, setWorkEndHour] = useState(18); // 営業終了時間
+  const [enableSplitSlots, setEnableSplitSlots] = useState(true); // 空き時間を細分化するか
 
   // ページタイトルを設定
   useEffect(() => {
@@ -52,6 +53,7 @@ export default function CalendarFinder() {
   const DEFAULT_SHOW_TODAY_AFTERNOON = true; // デフォルトで当日も表示
   const DEFAULT_WORK_START_HOUR = 9; // デフォルト営業開始時間
   const DEFAULT_WORK_END_HOUR = 18; // デフォルト営業終了時間
+  const DEFAULT_ENABLE_SPLIT_SLOTS = true; // デフォルトで細分化ON
 
   const periods: Period[] = ["this_week", "next_week", "next_next_week", "next_month"];
   const durations = [15, 30, 45, 60];
@@ -67,6 +69,7 @@ export default function CalendarFinder() {
     const savedShowTodayAfternoon = localStorage.getItem("showTodayAfternoon");
     const savedWorkStartHour = localStorage.getItem("workStartHour");
     const savedWorkEndHour = localStorage.getItem("workEndHour");
+    const savedEnableSplitSlots = localStorage.getItem("enableSplitSlots");
 
     if (savedSubject) setMailSubject(savedSubject);
     if (savedBody) setMailBody(savedBody);
@@ -76,6 +79,7 @@ export default function CalendarFinder() {
     if (savedShowTodayAfternoon !== null) setShowTodayAfternoon(savedShowTodayAfternoon === "true");
     if (savedWorkStartHour) setWorkStartHour(Number(savedWorkStartHour));
     if (savedWorkEndHour) setWorkEndHour(Number(savedWorkEndHour));
+    if (savedEnableSplitSlots !== null) setEnableSplitSlots(savedEnableSplitSlots === "true");
 
     const params = new URLSearchParams(window.location.search);
     if (params.get("authenticated") === "true") {
@@ -231,12 +235,14 @@ export default function CalendarFinder() {
           return durationInMinutes >= durationMin;
         });
 
-        // 長い枠を細分化
-        const splitSlots = splitLongSlots(filteredSlots, durationMin);
+        // 設定により、長い枠を細分化するかどうか
+        const finalSlots = enableSplitSlots
+          ? splitLongSlots(filteredSlots, durationMin)
+          : filteredSlots;
 
         return {
           ...day,
-          slots: splitSlots
+          slots: finalSlots
         };
       })
       .filter((day): day is DaySlots => day !== null); // nullを除外
@@ -257,9 +263,24 @@ export default function CalendarFinder() {
       if (day.slots.length === 0) {
         lines.push("（空きなし）");
       } else {
-        day.slots.forEach(slot => {
-          lines.push(`・${slot.start}〜${slot.end}`);
+        // 午前と午後に分ける
+        const morningSlots = day.slots.filter(slot => {
+          const hour = parseInt(slot.start.split(":")[0]);
+          return hour < 12;
         });
+        const afternoonSlots = day.slots.filter(slot => {
+          const hour = parseInt(slot.start.split(":")[0]);
+          return hour >= 12;
+        });
+
+        if (morningSlots.length > 0) {
+          const morningTimes = morningSlots.map(slot => `${slot.start}〜${slot.end}`).join(", ");
+          lines.push(`【午前】${morningTimes}`);
+        }
+        if (afternoonSlots.length > 0) {
+          const afternoonTimes = afternoonSlots.map(slot => `${slot.start}〜${slot.end}`).join(", ");
+          lines.push(`【午後】${afternoonTimes}`);
+        }
       }
     });
 
@@ -359,6 +380,7 @@ export default function CalendarFinder() {
       localStorage.setItem("showTodayAfternoon", String(showTodayAfternoon));
       localStorage.setItem("workStartHour", String(workStartHour));
       localStorage.setItem("workEndHour", String(workEndHour));
+      localStorage.setItem("enableSplitSlots", String(enableSplitSlots));
       setShowSettings(false);
       alert("設定を保存しました");
     }
@@ -374,6 +396,7 @@ export default function CalendarFinder() {
       setShowTodayAfternoon(DEFAULT_SHOW_TODAY_AFTERNOON);
       setWorkStartHour(DEFAULT_WORK_START_HOUR);
       setWorkEndHour(DEFAULT_WORK_END_HOUR);
+      setEnableSplitSlots(DEFAULT_ENABLE_SPLIT_SLOTS);
       alert("デフォルト設定に戻しました");
     }
   };
@@ -456,9 +479,19 @@ export default function CalendarFinder() {
                 }} />
                 <button
                   onClick={async () => {
-                    if (window.confirm("Googleカレンダーとの連携を解除しますか？\n再度連携が必要になります。")) {
+                    const providerName = calendarProvider === "google" ? "Google" : "Outlook";
+                    if (window.confirm(`${providerName}カレンダーとの連携を解除しますか？\n再度連携が必要になります。`)) {
                       try {
-                        await fetch("/api/auth/logout", { method: "POST" });
+                        // プロバイダーに応じたクッキーを削除
+                        if (calendarProvider === "google") {
+                          // Googleのクッキーを削除
+                          document.cookie = "google_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                          document.cookie = "google_refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                        } else {
+                          // Microsoftのクッキーを削除
+                          document.cookie = "microsoft_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                          document.cookie = "microsoft_refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                        }
                         setIsAuthenticated(false);
                         setResult(null);
                         setSelectedPeriod(null);
@@ -852,31 +885,74 @@ export default function CalendarFinder() {
                         }}>
                           空きなし
                         </div>
-                      ) : (
-                        <div style={{
-                          display: "flex",
-                          flexWrap: "wrap",
-                          gap: 8
-                        }}>
-                          {day.slots.map((slot, sidx) => (
-                            <div
-                              key={sidx}
-                              style={{
-                                padding: "10px 14px",
-                                background: "#f1f5f9",
-                                borderRadius: 6,
-                                fontSize: 14,
-                                fontWeight: 500,
-                                color: "#334155",
-                                border: "1px solid #e2e8f0",
-                                whiteSpace: "nowrap"
-                              }}
-                            >
-                              {slot.start}〜{slot.end}
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      ) : (() => {
+                        // 午前と午後に分ける
+                        const morningSlots = day.slots.filter(slot => {
+                          const hour = parseInt(slot.start.split(":")[0]);
+                          return hour < 12;
+                        });
+                        const afternoonSlots = day.slots.filter(slot => {
+                          const hour = parseInt(slot.start.split(":")[0]);
+                          return hour >= 12;
+                        });
+
+                        return (
+                          <div>
+                            {morningSlots.length > 0 && (
+                              <div style={{ marginBottom: afternoonSlots.length > 0 ? 16 : 0 }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 8 }}>
+                                  【午前】
+                                </div>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                  {morningSlots.map((slot, sidx) => (
+                                    <div
+                                      key={sidx}
+                                      style={{
+                                        padding: "10px 14px",
+                                        background: "#fef3c7",
+                                        borderRadius: 6,
+                                        fontSize: 14,
+                                        fontWeight: 500,
+                                        color: "#92400e",
+                                        border: "1px solid #fde68a",
+                                        whiteSpace: "nowrap"
+                                      }}
+                                    >
+                                      {slot.start}〜{slot.end}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {afternoonSlots.length > 0 && (
+                              <div>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 8 }}>
+                                  【午後】
+                                </div>
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                  {afternoonSlots.map((slot, sidx) => (
+                                    <div
+                                      key={sidx}
+                                      style={{
+                                        padding: "10px 14px",
+                                        background: "#dbeafe",
+                                        borderRadius: 6,
+                                        fontSize: 14,
+                                        fontWeight: 500,
+                                        color: "#1e40af",
+                                        border: "1px solid #bfdbfe",
+                                        whiteSpace: "nowrap"
+                                      }}
+                                    >
+                                      {slot.start}〜{slot.end}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}
@@ -1095,6 +1171,21 @@ export default function CalendarFinder() {
                 </label>
                 <p style={{ fontSize: 12, color: "#64748b", marginTop: 4, marginLeft: 26 }}>
                   オフにすると、12時以降は当日の候補を表示しません
+                </p>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={enableSplitSlots}
+                    onChange={(e) => setEnableSplitSlots(e.target.checked)}
+                    style={{ width: 18, height: 18, cursor: "pointer" }}
+                  />
+                  空き時間を細分化して表示する
+                </label>
+                <p style={{ fontSize: 12, color: "#64748b", marginTop: 4, marginLeft: 26 }}>
+                  オフにすると、長い空き時間をまとめて表示します（例: 09:00-18:00）
                 </p>
               </div>
 
