@@ -105,7 +105,7 @@ export default function Home() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", padding: "16px", background: "#f8fafc" }}>
+    <div style={{ minHeight: "100vh", padding: "16px", background: "var(--background)" }}>
       <style>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(10px); }
@@ -162,14 +162,14 @@ export default function Home() {
                   right: 0,
                   padding: "10px 16px",
                   borderRadius: 8,
-                  background: "white",
-                  border: "1px solid #e5e7eb",
+                  background: "var(--card-bg)",
+                  border: "1px solid var(--card-border)",
                   cursor: "pointer",
                   display: "none",
                   alignItems: "center",
                   gap: 6,
                   fontSize: 14,
-                  color: "#475569",
+                  color: "var(--text-secondary)",
                   fontWeight: 500,
                   transition: "all 0.2s"
                 }}

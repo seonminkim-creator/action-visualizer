@@ -37,6 +37,88 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* ダークモード対応 - インラインスタイルのオーバーライド */
+@media (prefers-color-scheme: dark) {
+  /* 背景色 */
+  [style*="background: #f8fafc"],
+  [style*="background:#f8fafc"],
+  [style*="background: #f9fafb"],
+  [style*="background:#f9fafb"] {
+    background: var(--background) !important;
+  }
+
+  /* カード背景 */
+  [style*="background: white"],
+  [style*="background:white"],
+  [style*="background: #ffffff"],
+  [style*="background:#ffffff"],
+  [style*="background: #fff"],
+  [style*="background:#fff"] {
+    background: var(--card-bg) !important;
+  }
+
+  /* テキスト色 */
+  [style*="color: #0f172a"],
+  [style*="color:#0f172a"],
+  [style*="color: #1e293b"],
+  [style*="color:#1e293b"] {
+    color: var(--foreground) !important;
+  }
+
+  [style*="color: #64748b"],
+  [style*="color:#64748b"],
+  [style*="color: #475569"],
+  [style*="color:#475569"] {
+    color: var(--text-secondary) !important;
+  }
+
+  [style*="color: #94a3b8"],
+  [style*="color:#94a3b8"],
+  [style*="color: #cbd5e1"],
+  [style*="color:#cbd5e1"] {
+    color: var(--text-tertiary) !important;
+  }
+
+  /* ボーダー色 */
+  [style*="border: 1px solid #e5e7eb"],
+  [style*="border:1px solid #e5e7eb"],
+  [style*="border-color: #e5e7eb"],
+  [style*="border-color:#e5e7eb"],
+  [style*="border: 1px solid #d1d5db"],
+  [style*="border:1px solid #d1d5db"] {
+    border-color: var(--card-border) !important;
+  }
+
+  /* モーダルオーバーレイ */
+  [style*="background: rgba(0, 0, 0, 0.5)"],
+  [style*="background:rgba(0, 0, 0, 0.5)"],
+  [style*="background: rgba(0,0,0,0.5)"],
+  [style*="background:rgba(0,0,0,0.5)"] {
+    background: var(--modal-overlay) !important;
+  }
+
+  /* Input/Textarea */
+  input,
+  textarea,
+  select {
+    background: var(--background) !important;
+    color: var(--foreground) !important;
+    border-color: var(--card-border) !important;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--text-tertiary) !important;
+  }
+
+  /* ボタン（グラデーション以外） */
+  button:not([style*="gradient"]) {
+    background: var(--card-bg) !important;
+    color: var(--foreground) !important;
+    border-color: var(--card-border) !important;
+  }
+}
+
 @keyframes spin {
   from {
     transform: rotate(0deg);
