@@ -358,7 +358,7 @@ export default function EmailComposer() {
           <p style={{ color: "#64748b", fontSize: 14, margin: 0, paddingLeft: 60 }}>
             {loading
               ? "メール文を生成中...（最大60秒程度かかる場合があります）"
-              : "ビジネスメールの作成・返信・添削をお手伝いします"}
+              : "メールの作成・返信・添削"}
           </p>
         </div>
 

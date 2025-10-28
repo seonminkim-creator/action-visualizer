@@ -18,7 +18,7 @@ const agents: Agent[] = [
   {
     id: "calendar-finder",
     title: "空き時間検索くん",
-    description: "カレンダーから空き時間をすぐ可視化",
+    description: "空き時間をすぐ可視化",
     icon: <Calendar size={32} />,
     path: "/agents/calendar-finder",
     gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
@@ -27,7 +27,7 @@ const agents: Agent[] = [
   {
     id: "agri-talk",
     title: "話題提案くん",
-    description: "農家さんとの会話のきっかけになる旬な話題を提供",
+    description: "農家さんとの会話ネタを提供",
     icon: <Sprout size={32} />,
     path: "/agents/agri-talk",
     gradient: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
@@ -37,7 +37,7 @@ const agents: Agent[] = [
   {
     id: "meeting-recorder",
     title: "会議まとめくん",
-    description: "会議の内容から議事録とTODOを自動生成",
+    description: "議事録とTODOを自動生成",
     icon: <MessageSquare size={32} />,
     path: "/agents/meeting-recorder",
     gradient: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
@@ -47,7 +47,7 @@ const agents: Agent[] = [
   {
     id: "email-composer",
     title: "メール返信叩きくん",
-    description: "ビジネスメールの作成・返信・添削をお手伝い",
+    description: "メールの作成・返信・添削",
     icon: <Mail size={32} />,
     path: "/agents/email-composer",
     gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
@@ -57,7 +57,7 @@ const agents: Agent[] = [
   {
     id: "task-visualizer",
     title: "タスク整理くん",
-    description: "メール・議事録からやるべきことを可視化",
+    description: "やるべきことを可視化",
     icon: <CheckSquare size={32} />,
     path: "/agents/task-visualizer",
     gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",

@@ -465,7 +465,7 @@ export default function MeetingRecorder() {
               ? processingStage
               : loading
               ? "議事録を作成中...（最大60秒程度かかる場合があります）"
-              : "会議の内容から議事録とTODOを自動生成"}
+              : "議事録とTODOを自動生成"}
           </p>
         </div>
 
@@ -650,7 +650,7 @@ export default function MeetingRecorder() {
                 >
                   <Monitor style={{ width: 14, height: 14 }} />
                   <Mic style={{ width: 14, height: 14 }} />
-                  WEB会議（推奨）
+                  WEB会議
                 </button>
               </div>
             )}
@@ -767,7 +767,7 @@ export default function MeetingRecorder() {
                   <strong>マイク:</strong> マイクから直接録音します（自分の声のみ）
                 </p>
                 <p style={{ margin: 0 }}>
-                  <strong>WEB会議（推奨）:</strong> システム音声とマイクの両方を録音します（相手＋自分の声）
+                  <strong>WEB会議:</strong> システム音声とマイクの両方を録音します（相手＋自分の声）
                   <br />
                   <span style={{ fontSize: 11, color: "#94a3b8" }}>
                     ※ 録音中にミュートボタンで自分の声のON/OFFを切り替えられます
@@ -1271,7 +1271,7 @@ export default function MeetingRecorder() {
             textAlign: "center",
           }}
         >
-          会議まとめくん - 会議の内容から議事録とTODOを自動生成
+          会議まとめくん - 議事録とTODOを自動生成
         </p>
       </div>
     </div>

@@ -247,7 +247,7 @@ export default function AgriTalkAssistant() {
           <p style={{ color: "#64748b", fontSize: 14, margin: 0, paddingLeft: 60 }}>
             {loading
               ? "🔍 直近3週間の旬な話題を検索中...（最大60秒程度かかる場合があります）"
-              : "農家さんとの会話のきっかけになる旬な話題を提供"}
+              : "農家さんとの会話ネタを提供"}
           </p>
         </div>
 
