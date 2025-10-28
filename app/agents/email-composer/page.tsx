@@ -52,20 +52,6 @@ export default function EmailComposer() {
     setCompanyName(globalCompanyName || localCompanyName || "");
   }, []);
 
-  // カレンダー認証状態を確認
-  useEffect(() => {
-    async function checkAuth() {
-      try {
-        const res = await fetch("/api/calendar/check-auth");
-        const data = await res.json();
-        setCalendarAuthenticated(data.authenticated);
-      } catch (err) {
-        console.error("Calendar auth check failed:", err);
-      }
-    }
-    checkAuth();
-  }, []);
-
   async function generateEmail(): Promise<void> {
     if (!inputText.trim()) {
       setError("メール内容または依頼内容を入力してください");
