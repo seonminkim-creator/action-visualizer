@@ -241,7 +241,7 @@ export default function MeetingRecorder() {
       setIsRecording(true);
       setError(null);
 
-      // 録音時間のカウント開始と5分ごとのセグメント処理
+      // 録音時間のカウント開始と3分ごとのセグメント処理
       setRecordingTime(0);
       let currentSegmentNum = 0; // クロージャー内で使用するセグメント番号
       const interval = setInterval(async () => {
