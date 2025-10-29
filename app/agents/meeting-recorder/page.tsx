@@ -205,18 +205,9 @@ export default function MeetingRecorder() {
       const recorder = new MediaRecorder(stream);
       const chunks: Blob[] = [];
 
-      let isSegmentProcessing = false; // セグメント処理中フラグ
-
       recorder.ondataavailable = async (e) => {
         if (e.data.size > 0) {
           console.log(`📊 データ受信: ${e.data.size} bytes, 現在のchunks数: ${chunks.length}`);
-
-          // セグメント処理中の場合は、一時的な配列に保存
-          if (isSegmentProcessing) {
-            console.log(`⏸️ セグメント処理中のため、データを待機中...`);
-            return;
-          }
-
           chunks.push(e.data);
           setCurrentAudioChunks([...chunks]);
         }
@@ -264,17 +255,17 @@ export default function MeetingRecorder() {
             // 非同期処理を実行
             (async () => {
               try {
-                isSegmentProcessing = true;
                 currentSegmentNum += 1;
                 console.log(`🔢 セグメント番号: ${currentSegmentNum}, chunks数: ${chunks.length}`);
 
-                // MediaRecorderにデータをリクエスト
+                // MediaRecorderにデータをリクエストして、少し待つ
                 if (recorder.state === "recording") {
                   recorder.requestData();
-
-                  // requestData()の結果を待つ（ondataavailableが発火するまで少し待つ）
-                  await new Promise(resolve => setTimeout(resolve, 500));
+                  // ondataavailableが発火してchunksに追加されるまで待つ
+                  await new Promise(resolve => setTimeout(resolve, 1000));
                 }
+
+                console.log(`📦 requestData後のchunks数: ${chunks.length}`);
 
                 if (chunks.length > 0) {
                   const audioBlob = new Blob(chunks, { type: "audio/webm" });
@@ -291,8 +282,6 @@ export default function MeetingRecorder() {
                 }
               } catch (err) {
                 console.error(`❌ セグメント ${currentSegmentNum} の処理エラー:`, err);
-              } finally {
-                isSegmentProcessing = false;
               }
             })();
           }
