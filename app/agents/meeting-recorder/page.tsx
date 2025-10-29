@@ -222,21 +222,21 @@ export default function MeetingRecorder() {
         }
       };
 
-      // 10分（600秒）ごとにデータを取得
-      recorder.start(600000); // 600,000ms = 10分
+      // 5分（300秒）ごとにデータを取得
+      recorder.start(300000); // 300,000ms = 5分
       setMediaRecorder(recorder);
       setAudioChunks(chunks);
       setIsRecording(true);
       setError(null);
 
-      // 録音時間のカウント開始と10分ごとのセグメント処理
+      // 録音時間のカウント開始と5分ごとのセグメント処理
       setRecordingTime(0);
       const interval = setInterval(() => {
         setRecordingTime((prev) => {
           const newTime = prev + 1;
 
-          // 10分（600秒）ごとにセグメントを処理
-          if (newTime > 0 && newTime % 600 === 0 && recorder.state === "recording") {
+          // 5分（300秒）ごとにセグメントを処理
+          if (newTime > 0 && newTime % 300 === 0 && recorder.state === "recording") {
             console.log(`⏰ ${newTime / 60}分経過 - セグメント処理開始`);
 
             // 現在のセグメントを処理
@@ -256,7 +256,7 @@ export default function MeetingRecorder() {
               const newRecorder = new MediaRecorder(stream);
               newRecorder.ondataavailable = recorder.ondataavailable;
               newRecorder.onstop = recorder.onstop;
-              newRecorder.start(600000);
+              newRecorder.start(300000);
               setMediaRecorder(newRecorder);
             }
           }
@@ -844,7 +844,7 @@ export default function MeetingRecorder() {
             )}
             {!isTranscribing && isRecording && (
               <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8, marginBottom: 0 }}>
-                📌 10分ごとに自動で文字起こしが実行されます。長時間の会議も安心してご利用ください
+                📌 5分ごとに自動で文字起こしが実行されます。長時間の会議も安心してご利用ください
                 {autoGenerateSummary && "。録音停止後、議事録を自動作成します"}
               </p>
             )}
