@@ -45,6 +45,9 @@ export default function MeetingRecorder() {
   const [history, setHistory] = useState<Array<{ id: string; date: string; summary: MeetingSummary }>>([]);
   const [showHistory, setShowHistory] = useState<boolean>(false);
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
+  const [segmentNumber, setSegmentNumber] = useState<number>(0);
+  const [activeStream, setActiveStream] = useState<MediaStream | null>(null);
+  const [currentAudioChunks, setCurrentAudioChunks] = useState<Blob[]>([]);
 
   // LocalStorageから設定と履歴を読み込み
   useEffect(() => {
@@ -84,6 +87,59 @@ export default function MeetingRecorder() {
       setProcessingTime(null);
     }
   }, [transcript]);
+
+  // セグメントを文字起こしする関数
+  async function transcribeSegment(audioBlob: Blob, segmentNum: number): Promise<void> {
+    console.log(`🎤 セグメント ${segmentNum} の文字起こし開始 (${audioBlob.size} bytes)`);
+    setIsTranscribing(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("audio", audioBlob);
+
+      const response = await fetch("/api/transcribe", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        let errorMessage = "文字起こしに失敗しました";
+        try {
+          const errorData = await response.json();
+          if (errorData.error) {
+            errorMessage = `セグメント ${segmentNum} の文字起こしエラー: ${errorData.error}`;
+          }
+        } catch {
+          errorMessage = `セグメント ${segmentNum} の文字起こしに失敗 (${response.status})`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+
+      if (!data.transcription || data.transcription.trim() === "") {
+        console.warn(`⚠️ セグメント ${segmentNum} は音声が認識できませんでした`);
+        return;
+      }
+
+      const newTranscript = data.transcription;
+      setTranscript((prev) => {
+        const separator = prev ? "\n\n" : "";
+        return prev + separator + `[セグメント ${segmentNum}]\n${newTranscript}`;
+      });
+
+      console.log(`✅ セグメント ${segmentNum} の文字起こし完了`);
+    } catch (err) {
+      console.error(`❌ セグメント ${segmentNum} の文字起こしエラー:`, err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : `セグメント ${segmentNum} の文字起こし中にエラーが発生しました`
+      );
+    } finally {
+      setIsTranscribing(false);
+    }
+  }
 
   async function startRecording(): Promise<void> {
     try {
@@ -132,86 +188,81 @@ export default function MeetingRecorder() {
         stream = destination.stream;
       }
 
+      setActiveStream(stream);
+      setSegmentNumber(0);
+      setCurrentAudioChunks([]);
+
       const recorder = new MediaRecorder(stream);
       const chunks: Blob[] = [];
 
-      recorder.ondataavailable = (e) => {
+      recorder.ondataavailable = async (e) => {
         if (e.data.size > 0) {
           chunks.push(e.data);
+          setCurrentAudioChunks([...chunks]);
         }
       };
 
       recorder.onstop = async () => {
-        const audioBlob = new Blob(chunks, { type: "audio/webm" });
+        // 最後のセグメントを処理
+        if (chunks.length > 0) {
+          const audioBlob = new Blob(chunks, { type: "audio/webm" });
+          const finalSegment = segmentNumber + 1;
+          await transcribeSegment(audioBlob, finalSegment);
+        }
+
+        // ストリーム停止
         stream.getTracks().forEach((track) => track.stop());
+        setActiveStream(null);
 
-        // 文字起こし処理
-        setIsTranscribing(true);
-        try {
-          const formData = new FormData();
-          formData.append("audio", audioBlob);
-
-          const response = await fetch("/api/transcribe", {
-            method: "POST",
-            body: formData,
-          });
-
-          if (!response.ok) {
-            // APIからの詳細エラーメッセージを取得
-            let errorMessage = "文字起こしに失敗しました";
-            try {
-              const errorData = await response.json();
-              if (errorData.error) {
-                errorMessage = `文字起こしエラー: ${errorData.error}`;
-              }
-            } catch {
-              errorMessage = `文字起こしに失敗 (${response.status}): ${response.statusText}`;
-            }
-            throw new Error(errorMessage);
-          }
-
-          const data = await response.json();
-
-          // データ検証
-          if (!data.transcription || data.transcription.trim() === "") {
-            throw new Error("音声が認識できませんでした。もう一度録音してください。");
-          }
-
-          const newTranscript = data.transcription;
-          setTranscript((prev) => {
-            const newText = prev ? prev + "\n\n" + newTranscript : newTranscript;
-            return newText;
-          });
-
-          // 自動議事録作成が有効な場合、文字起こし後に自動実行
-          if (autoGenerateSummary) {
-            // transcriptステートが更新されるのを待つため、setTimeoutを使用
-            setTimeout(() => {
-              generateSummary();
-            }, 500);
-          }
-        } catch (err) {
-          console.error("文字起こしエラー:", err);
-          setError(
-            err instanceof Error
-              ? err.message
-              : "文字起こし中に予期しないエラーが発生しました"
-          );
-        } finally {
-          setIsTranscribing(false);
+        // 自動議事録作成が有効な場合、文字起こし後に自動実行
+        if (autoGenerateSummary) {
+          setTimeout(() => {
+            generateSummary();
+          }, 1000);
         }
       };
 
-      recorder.start();
+      // 10分（600秒）ごとにデータを取得
+      recorder.start(600000); // 600,000ms = 10分
       setMediaRecorder(recorder);
       setAudioChunks(chunks);
       setIsRecording(true);
       setError(null);
 
-      // 録音時間のカウント開始
+      // 録音時間のカウント開始と10分ごとのセグメント処理
       setRecordingTime(0);
       const interval = setInterval(() => {
-        setRecordingTime((prev) => prev + 1);
+        setRecordingTime((prev) => {
+          const newTime = prev + 1;
+
+          // 10分（600秒）ごとにセグメントを処理
+          if (newTime > 0 && newTime % 600 === 0 && recorder.state === "recording") {
+            console.log(`⏰ ${newTime / 60}分経過 - セグメント処理開始`);
+
+            // 現在のセグメントを処理
+            const currentSegment = segmentNumber + 1;
+            if (chunks.length > 0) {
+              const audioBlob = new Blob(chunks, { type: "audio/webm" });
+              transcribeSegment(audioBlob, currentSegment);
+
+              // チャンクをクリアして次のセグメントへ
+              chunks.length = 0;
+              setSegmentNumber(currentSegment);
+            }
+
+            // MediaRecorderを再スタート（次のセグメント用）
+            if (recorder.state === "recording") {
+              recorder.stop();
+              const newRecorder = new MediaRecorder(stream);
+              newRecorder.ondataavailable = recorder.ondataavailable;
+              newRecorder.onstop = recorder.onstop;
+              newRecorder.start(600000);
+              setMediaRecorder(newRecorder);
+            }
+          }
+
+          return newTime;
+        });
       }, 1000);
       setRecordingInterval(interval);
     } catch (err) {
@@ -793,8 +844,8 @@ export default function MeetingRecorder() {
             )}
             {!isTranscribing && isRecording && (
               <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8, marginBottom: 0 }}>
-                録音停止後、自動的に文字起こしが実行されます
-                {autoGenerateSummary && "。その後、議事録を自動作成します"}
+                📌 10分ごとに自動で文字起こしが実行されます。長時間の会議も安心してご利用ください
+                {autoGenerateSummary && "。録音停止後、議事録を自動作成します"}
               </p>
             )}
           </div>
