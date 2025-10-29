@@ -248,8 +248,8 @@ export default function MeetingRecorder() {
         setRecordingTime((prev) => {
           const newTime = prev + 1;
 
-          // 5分（300秒）ごとにセグメントを処理
-          if (newTime > 0 && newTime % 300 === 0 && recorder.state === "recording") {
+          // 3分（180秒）ごとにセグメントを処理
+          if (newTime > 0 && newTime % 180 === 0 && recorder.state === "recording") {
             console.log(`⏰ ${newTime / 60}分経過 - セグメント処理開始`);
 
             // 非同期処理を実行
@@ -869,7 +869,7 @@ export default function MeetingRecorder() {
             )}
             {!isTranscribing && isRecording && (
               <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8, marginBottom: 0 }}>
-                📌 5分ごとに自動で文字起こしが実行されます。長時間の会議も安心してご利用ください
+                📌 3分ごとに自動で文字起こしが実行されます。長時間の会議も安心してご利用ください
                 {autoGenerateSummary && "。録音停止後、議事録を自動作成します"}
               </p>
             )}
