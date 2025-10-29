@@ -90,29 +90,39 @@ export default function MeetingRecorder() {
 
   // セグメントを文字起こしする関数
   async function transcribeSegment(audioBlob: Blob, segmentNum: number): Promise<void> {
-    console.log(`🎤 セグメント ${segmentNum} の文字起こし開始 (${audioBlob.size} bytes)`);
+    console.log(`🎤 セグメント ${segmentNum} の文字起こし開始 (${audioBlob.size} bytes, type: ${audioBlob.type})`);
     setIsTranscribing(true);
 
     try {
       const formData = new FormData();
       formData.append("audio", audioBlob);
 
+      console.log(`📤 セグメント ${segmentNum} を送信中... (${(audioBlob.size / 1024 / 1024).toFixed(2)} MB)`);
+
       const response = await fetch("/api/transcribe", {
         method: "POST",
         body: formData,
       });
 
+      console.log(`📥 セグメント ${segmentNum} のレスポンス: status=${response.status}, ok=${response.ok}`);
+
       if (!response.ok) {
         let errorMessage = "文字起こしに失敗しました";
+        let errorDetails = "";
         try {
           const errorData = await response.json();
+          console.error(`❌ セグメント ${segmentNum} エラーレスポンス:`, errorData);
           if (errorData.error) {
             errorMessage = `セグメント ${segmentNum} の文字起こしエラー: ${errorData.error}`;
+            errorDetails = JSON.stringify(errorData);
           }
-        } catch {
+        } catch (parseError) {
+          console.error(`❌ セグメント ${segmentNum} エラーレスポンスのパース失敗:`, parseError);
           errorMessage = `セグメント ${segmentNum} の文字起こしに失敗 (${response.status})`;
         }
-        throw new Error(errorMessage);
+        const error = new Error(errorMessage);
+        (error as any).details = errorDetails;
+        throw error;
       }
 
       const data = await response.json();
@@ -195,14 +205,25 @@ export default function MeetingRecorder() {
       const recorder = new MediaRecorder(stream);
       const chunks: Blob[] = [];
 
+      let isSegmentProcessing = false; // セグメント処理中フラグ
+
       recorder.ondataavailable = async (e) => {
         if (e.data.size > 0) {
+          console.log(`📊 データ受信: ${e.data.size} bytes, 現在のchunks数: ${chunks.length}`);
+
+          // セグメント処理中の場合は、一時的な配列に保存
+          if (isSegmentProcessing) {
+            console.log(`⏸️ セグメント処理中のため、データを待機中...`);
+            return;
+          }
+
           chunks.push(e.data);
           setCurrentAudioChunks([...chunks]);
         }
       };
 
       recorder.onstop = async () => {
+        console.log(`🛑 録音停止 - 最終セグメント処理開始 (chunks数: ${chunks.length})`);
         // 最後のセグメントを処理
         if (chunks.length > 0) {
           const audioBlob = new Blob(chunks, { type: "audio/webm" });
@@ -222,8 +243,8 @@ export default function MeetingRecorder() {
         }
       };
 
-      // 5分（300秒）ごとにデータを取得
-      recorder.start(300000); // 300,000ms = 5分
+      // 録音開始（timesliceなし - 手動でrequestData()を呼び出す）
+      recorder.start();
       setMediaRecorder(recorder);
       setAudioChunks(chunks);
       setIsRecording(true);
@@ -231,7 +252,8 @@ export default function MeetingRecorder() {
 
       // 録音時間のカウント開始と5分ごとのセグメント処理
       setRecordingTime(0);
-      const interval = setInterval(() => {
+      let currentSegmentNum = 0; // クロージャー内で使用するセグメント番号
+      const interval = setInterval(async () => {
         setRecordingTime((prev) => {
           const newTime = prev + 1;
 
@@ -239,26 +261,40 @@ export default function MeetingRecorder() {
           if (newTime > 0 && newTime % 300 === 0 && recorder.state === "recording") {
             console.log(`⏰ ${newTime / 60}分経過 - セグメント処理開始`);
 
-            // 現在のセグメントを処理
-            const currentSegment = segmentNumber + 1;
-            if (chunks.length > 0) {
-              const audioBlob = new Blob(chunks, { type: "audio/webm" });
-              transcribeSegment(audioBlob, currentSegment);
+            // 非同期処理を実行
+            (async () => {
+              try {
+                isSegmentProcessing = true;
+                currentSegmentNum += 1;
+                console.log(`🔢 セグメント番号: ${currentSegmentNum}, chunks数: ${chunks.length}`);
 
-              // チャンクをクリアして次のセグメントへ
-              chunks.length = 0;
-              setSegmentNumber(currentSegment);
-            }
+                // MediaRecorderにデータをリクエスト
+                if (recorder.state === "recording") {
+                  recorder.requestData();
 
-            // MediaRecorderを再スタート（次のセグメント用）
-            if (recorder.state === "recording") {
-              recorder.stop();
-              const newRecorder = new MediaRecorder(stream);
-              newRecorder.ondataavailable = recorder.ondataavailable;
-              newRecorder.onstop = recorder.onstop;
-              newRecorder.start(300000);
-              setMediaRecorder(newRecorder);
-            }
+                  // requestData()の結果を待つ（ondataavailableが発火するまで少し待つ）
+                  await new Promise(resolve => setTimeout(resolve, 500));
+                }
+
+                if (chunks.length > 0) {
+                  const audioBlob = new Blob(chunks, { type: "audio/webm" });
+                  console.log(`🎬 セグメント ${currentSegmentNum} を文字起こし開始 (${audioBlob.size} bytes)`);
+
+                  // 非同期で文字起こしを実行（待たない）
+                  transcribeSegment(audioBlob, currentSegmentNum);
+
+                  // チャンクをクリアして次のセグメントへ
+                  chunks.length = 0;
+                  setSegmentNumber(currentSegmentNum);
+                } else {
+                  console.warn(`⚠️ セグメント ${currentSegmentNum} にデータがありません`);
+                }
+              } catch (err) {
+                console.error(`❌ セグメント ${currentSegmentNum} の処理エラー:`, err);
+              } finally {
+                isSegmentProcessing = false;
+              }
+            })();
           }
 
           return newTime;

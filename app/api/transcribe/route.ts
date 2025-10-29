@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await audioFile.arrayBuffer();
     const base64Audio = Buffer.from(arrayBuffer).toString("base64");
 
-    console.log(`🎤 音声データを受信: ${audioFile.size} bytes, type: ${audioFile.type}`);
+    console.log(`🎤 音声データを受信: ${audioFile.size} bytes (${(audioFile.size / 1024 / 1024).toFixed(2)} MB), type: ${audioFile.type}`);
 
     // Gemini API で音声認識
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`;
@@ -107,8 +107,8 @@ export async function POST(req: NextRequest) {
         }
 
         const errorText = await response.text();
-        console.error(`❌ Gemini API エラー (試行${attempt}/${maxRetries}):`, errorText);
-        lastError = errorText;
+        console.error(`❌ Gemini API エラー (試行${attempt}/${maxRetries}, status=${response.status}):`, errorText);
+        lastError = `Status ${response.status}: ${errorText}`;
         continue;
       } catch (error) {
         console.error(`❌ リクエストエラー (試行${attempt}/${maxRetries}):`, error);
