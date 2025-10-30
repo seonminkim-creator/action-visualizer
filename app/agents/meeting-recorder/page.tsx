@@ -93,62 +93,88 @@ export default function MeetingRecorder() {
     console.log(`🎤 セグメント ${segmentNum} の文字起こし開始 (${audioBlob.size} bytes, type: ${audioBlob.type})`);
     setIsTranscribing(true);
 
-    try {
-      const formData = new FormData();
-      formData.append("audio", audioBlob);
+    // リトライロジック（最大3回、5秒間隔）
+    const maxRetries = 3;
+    let lastError: Error | null = null;
 
-      console.log(`📤 セグメント ${segmentNum} を送信中... (${(audioBlob.size / 1024 / 1024).toFixed(2)} MB)`);
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const formData = new FormData();
+        formData.append("audio", audioBlob);
 
-      const response = await fetch("/api/transcribe", {
-        method: "POST",
-        body: formData,
-      });
+        console.log(`📤 セグメント ${segmentNum} を送信中... (試行${attempt}/${maxRetries}, ${(audioBlob.size / 1024 / 1024).toFixed(2)} MB)`);
 
-      console.log(`📥 セグメント ${segmentNum} のレスポンス: status=${response.status}, ok=${response.ok}`);
+        const response = await fetch("/api/transcribe", {
+          method: "POST",
+          body: formData,
+        });
 
-      if (!response.ok) {
-        let errorMessage = "文字起こしに失敗しました";
-        let errorDetails = "";
-        try {
-          const errorData = await response.json();
-          console.error(`❌ セグメント ${segmentNum} エラーレスポンス:`, errorData);
-          if (errorData.error) {
-            errorMessage = `セグメント ${segmentNum} の文字起こしエラー: ${errorData.error}`;
-            errorDetails = JSON.stringify(errorData);
+        console.log(`📥 セグメント ${segmentNum} のレスポンス: status=${response.status}, ok=${response.ok} (試行${attempt}/${maxRetries})`);
+
+        if (!response.ok) {
+          let errorMessage = "文字起こしに失敗しました";
+          let errorDetails = "";
+          try {
+            const errorData = await response.json();
+            console.error(`❌ セグメント ${segmentNum} エラーレスポンス (試行${attempt}/${maxRetries}):`, errorData);
+            if (errorData.error) {
+              errorMessage = `セグメント ${segmentNum} の文字起こしエラー: ${errorData.error}`;
+              errorDetails = JSON.stringify(errorData);
+            }
+          } catch (parseError) {
+            console.error(`❌ セグメント ${segmentNum} エラーレスポンスのパース失敗 (試行${attempt}/${maxRetries}):`, parseError);
+            errorMessage = `セグメント ${segmentNum} の文字起こしに失敗 (${response.status})`;
           }
-        } catch (parseError) {
-          console.error(`❌ セグメント ${segmentNum} エラーレスポンスのパース失敗:`, parseError);
-          errorMessage = `セグメント ${segmentNum} の文字起こしに失敗 (${response.status})`;
+          const error = new Error(errorMessage);
+          (error as any).details = errorDetails;
+          lastError = error;
+
+          // 500番台エラーの場合はリトライ
+          if (response.status >= 500 && attempt < maxRetries) {
+            console.log(`⏳ セグメント ${segmentNum} をリトライ中... (${attempt}/${maxRetries}、5秒後に再試行)`);
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            continue;
+          }
+
+          throw error;
         }
-        const error = new Error(errorMessage);
-        (error as any).details = errorDetails;
-        throw error;
+
+        const data = await response.json();
+
+        if (!data.transcription || data.transcription.trim() === "") {
+          console.warn(`⚠️ セグメント ${segmentNum} は音声が認識できませんでした`);
+          return;
+        }
+
+        const newTranscript = data.transcription;
+        setTranscript((prev) => {
+          const separator = prev ? "\n\n" : "";
+          return prev + separator + `[セグメント ${segmentNum}]\n${newTranscript}`;
+        });
+
+        console.log(`✅ セグメント ${segmentNum} の文字起こし完了 (試行${attempt}回目で成功)`);
+        return; // 成功したら即座に終了
+      } catch (err) {
+        console.error(`❌ セグメント ${segmentNum} の文字起こしエラー (試行${attempt}/${maxRetries}):`, err);
+        lastError = err instanceof Error ? err : new Error(`セグメント ${segmentNum} の文字起こし中にエラーが発生しました`);
+
+        // ネットワークエラーなどの場合はリトライ
+        if (attempt < maxRetries) {
+          console.log(`⏳ セグメント ${segmentNum} をリトライ中... (${attempt}/${maxRetries}、5秒後に再試行)`);
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          continue;
+        }
       }
-
-      const data = await response.json();
-
-      if (!data.transcription || data.transcription.trim() === "") {
-        console.warn(`⚠️ セグメント ${segmentNum} は音声が認識できませんでした`);
-        return;
-      }
-
-      const newTranscript = data.transcription;
-      setTranscript((prev) => {
-        const separator = prev ? "\n\n" : "";
-        return prev + separator + `[セグメント ${segmentNum}]\n${newTranscript}`;
-      });
-
-      console.log(`✅ セグメント ${segmentNum} の文字起こし完了`);
-    } catch (err) {
-      console.error(`❌ セグメント ${segmentNum} の文字起こしエラー:`, err);
-      setError(
-        err instanceof Error
-          ? err.message
-          : `セグメント ${segmentNum} の文字起こし中にエラーが発生しました`
-      );
-    } finally {
-      setIsTranscribing(false);
     }
+
+    // すべてのリトライが失敗した場合
+    console.error(`❌ セグメント ${segmentNum} の文字起こしに失敗しました (${maxRetries}回試行)`);
+    setError(
+      lastError instanceof Error
+        ? lastError.message
+        : `セグメント ${segmentNum} の文字起こし中にエラーが発生しました`
+    );
+    setIsTranscribing(false);
   }
 
   async function startRecording(): Promise<void> {

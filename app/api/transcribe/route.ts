@@ -96,20 +96,20 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ transcription });
         }
 
-        // 503エラーの場合、エクスポネンシャルバックオフでリトライ
-        if (response.status === 503 && attempt < maxRetries) {
-          const backoffSeconds = Math.pow(2, attempt); // 2, 4, 8, 16, 32, 64
-          const errorText = await response.text();
-          console.error(`❌ Gemini API エラー (試行${attempt}/${maxRetries}):`, errorText);
-          console.log(`⏳ Gemini APIリトライ ${attempt}/${maxRetries} (503エラー、${backoffSeconds}秒後に再試行)`);
+        // 500番台または429エラーの場合、エクスポネンシャルバックオフでリトライ
+        const errorText = await response.text();
+        console.error(`❌ Gemini API エラー (試行${attempt}/${maxRetries}, status=${response.status}):`, errorText);
+        lastError = `Status ${response.status}: ${errorText}`;
+
+        if ((response.status >= 500 || response.status === 429) && attempt < maxRetries) {
+          const backoffSeconds = Math.pow(2, attempt); // 2, 4, 8, 16, 32, 64秒
+          console.log(`⏳ Gemini APIリトライ ${attempt}/${maxRetries} (status=${response.status}、${backoffSeconds}秒後に再試行)`);
           await new Promise((resolve) => setTimeout(resolve, backoffSeconds * 1000));
           continue;
         }
 
-        const errorText = await response.text();
-        console.error(`❌ Gemini API エラー (試行${attempt}/${maxRetries}, status=${response.status}):`, errorText);
-        lastError = `Status ${response.status}: ${errorText}`;
-        continue;
+        // その他のエラー（400番台など）は即座に失敗
+        break;
       } catch (error) {
         console.error(`❌ リクエストエラー (試行${attempt}/${maxRetries}):`, error);
         lastError = error;
