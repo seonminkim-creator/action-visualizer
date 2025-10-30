@@ -297,6 +297,12 @@ export default function MeetingRecorder() {
                   const audioBlob = new Blob(chunks, { type: "audio/webm" });
                   console.log(`🎬 セグメント ${currentSegmentNum} を文字起こし開始 (${audioBlob.size} bytes)`);
 
+                  // セグメント2以降の場合、Gemini API rate limitを避けるため少し待つ
+                  if (currentSegmentNum > 1) {
+                    console.log(`⏱️  セグメント ${currentSegmentNum}: Rate limit対策で3秒待機`);
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                  }
+
                   // 非同期で文字起こしを実行（待たない）
                   transcribeSegment(audioBlob, currentSegmentNum);
 
