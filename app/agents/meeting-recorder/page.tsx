@@ -233,22 +233,38 @@ export default function MeetingRecorder() {
       const recorder = new MediaRecorder(stream);
       const chunks: Blob[] = [];
 
+      let currentSegmentNum = 0; // セグメント番号
+
       recorder.ondataavailable = async (e) => {
         if (e.data.size > 0) {
-          console.log(`📊 データ受信: ${e.data.size} bytes, 現在のchunks数: ${chunks.length}`);
+          currentSegmentNum += 1;
+          console.log(`📊 データ受信 (セグメント ${currentSegmentNum}): ${e.data.size} bytes (${(e.data.size / 1024 / 1024).toFixed(2)} MB)`);
           chunks.push(e.data);
           setCurrentAudioChunks([...chunks]);
+
+          // timesliceによる自動セグメント（180秒ごと）の場合、即座に文字起こしを実行
+          if (recorder.state === "recording") {
+            console.log(`🎬 セグメント ${currentSegmentNum} を文字起こし開始`);
+
+            // セグメント2以降の場合、Gemini API rate limitを避けるため少し待つ
+            if (currentSegmentNum > 1) {
+              console.log(`⏱️  セグメント ${currentSegmentNum}: Rate limit対策で3秒待機`);
+              await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+
+            // 単一のBlobとして文字起こし（完全なWebMセグメント）
+            const audioBlob = new Blob([e.data], { type: "audio/webm;codecs=opus" });
+            transcribeSegment(audioBlob, currentSegmentNum);
+            setSegmentNumber(currentSegmentNum);
+          }
         }
       };
 
       recorder.onstop = async () => {
-        console.log(`🛑 録音停止 - 最終セグメント処理開始 (chunks数: ${chunks.length})`);
-        // 最後のセグメントを処理
-        if (chunks.length > 0) {
-          const audioBlob = new Blob(chunks, { type: "audio/webm" });
-          const finalSegment = segmentNumber + 1;
-          await transcribeSegment(audioBlob, finalSegment);
-        }
+        console.log(`🛑 録音停止 - 最終処理開始 (総chunks数: ${chunks.length})`);
+
+        // 最後のセグメントがあれば処理（onstopで受信したデータ）
+        // ondataavailableで既に処理されているので、ここでは何もしない
 
         // ストリーム停止
         stream.getTracks().forEach((track) => track.stop());
@@ -262,66 +278,17 @@ export default function MeetingRecorder() {
         }
       };
 
-      // 録音開始（timesliceなし - 手動でrequestData()を呼び出す）
-      recorder.start();
+      // 録音開始（180秒ごとにデータを自動生成）
+      recorder.start(180000);
       setMediaRecorder(recorder);
       setAudioChunks(chunks);
       setIsRecording(true);
       setError(null);
 
-      // 録音時間のカウント開始と3分ごとのセグメント処理
+      // 録音時間のカウント開始（シンプルに時間表示のみ）
       setRecordingTime(0);
-      let currentSegmentNum = 0; // クロージャー内で使用するセグメント番号
-      const interval = setInterval(async () => {
-        setRecordingTime((prev) => {
-          const newTime = prev + 1;
-
-          // 3分（180秒）ごとにセグメントを処理
-          if (newTime > 0 && newTime % 180 === 0 && recorder.state === "recording") {
-            console.log(`⏰ ${newTime / 60}分経過 - セグメント処理開始`);
-
-            // 非同期処理を実行
-            (async () => {
-              try {
-                currentSegmentNum += 1;
-                console.log(`🔢 セグメント番号: ${currentSegmentNum}, chunks数: ${chunks.length}`);
-
-                // MediaRecorderにデータをリクエストして、少し待つ
-                if (recorder.state === "recording") {
-                  recorder.requestData();
-                  // ondataavailableが発火してchunksに追加されるまで待つ
-                  await new Promise(resolve => setTimeout(resolve, 1000));
-                }
-
-                console.log(`📦 requestData後のchunks数: ${chunks.length}`);
-
-                if (chunks.length > 0) {
-                  const audioBlob = new Blob(chunks, { type: "audio/webm" });
-                  console.log(`🎬 セグメント ${currentSegmentNum} を文字起こし開始 (${audioBlob.size} bytes)`);
-
-                  // セグメント2以降の場合、Gemini API rate limitを避けるため少し待つ
-                  if (currentSegmentNum > 1) {
-                    console.log(`⏱️  セグメント ${currentSegmentNum}: Rate limit対策で3秒待機`);
-                    await new Promise(resolve => setTimeout(resolve, 3000));
-                  }
-
-                  // 非同期で文字起こしを実行（待たない）
-                  transcribeSegment(audioBlob, currentSegmentNum);
-
-                  // チャンクをクリアして次のセグメントへ
-                  chunks.length = 0;
-                  setSegmentNumber(currentSegmentNum);
-                } else {
-                  console.warn(`⚠️ セグメント ${currentSegmentNum} にデータがありません`);
-                }
-              } catch (err) {
-                console.error(`❌ セグメント ${currentSegmentNum} の処理エラー:`, err);
-              }
-            })();
-          }
-
-          return newTime;
-        });
+      const interval = setInterval(() => {
+        setRecordingTime((prev) => prev + 1);
       }, 1000);
       setRecordingInterval(interval);
     } catch (err) {
