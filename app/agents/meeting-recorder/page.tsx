@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Loader2, Mic, MicOff, Square, Monitor, Settings, History, Copy, Check, MessageSquare } from "lucide-react";
 import BackToHome from "../../components/BackToHome";
 
@@ -48,6 +48,7 @@ export default function MeetingRecorder() {
   const [segmentNumber, setSegmentNumber] = useState<number>(0);
   const [activeStream, setActiveStream] = useState<MediaStream | null>(null);
   const [currentAudioChunks, setCurrentAudioChunks] = useState<Blob[]>([]);
+  const isManualStopRef = useRef<boolean>(false); // ユーザーの手動停止フラグ
 
   // LocalStorageから設定と履歴を読み込み
   useEffect(() => {
@@ -230,65 +231,107 @@ export default function MeetingRecorder() {
       setSegmentNumber(0);
       setCurrentAudioChunks([]);
 
-      const recorder = new MediaRecorder(stream);
-      const chunks: Blob[] = [];
+      let currentRecorder: MediaRecorder | null = null;
+      let allChunks: Blob[] = []; // 全セグメントを保持
+      let currentSegmentNum = 0;
 
-      let currentSegmentNum = 0; // セグメント番号
+      // MediaRecorderを初期化する関数
+      const initRecorder = () => {
+        const newRecorder = new MediaRecorder(stream);
+        const segmentChunks: Blob[] = [];
 
-      recorder.ondataavailable = async (e) => {
-        if (e.data.size > 0) {
-          currentSegmentNum += 1;
-          console.log(`📊 データ受信 (セグメント ${currentSegmentNum}): ${e.data.size} bytes (${(e.data.size / 1024 / 1024).toFixed(2)} MB)`);
-          chunks.push(e.data);
-          setCurrentAudioChunks([...chunks]);
+        newRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            console.log(`📊 データ受信: ${e.data.size} bytes (${(e.data.size / 1024 / 1024).toFixed(2)} MB)`);
+            segmentChunks.push(e.data);
+            allChunks.push(e.data);
+            setCurrentAudioChunks([...allChunks]);
+          }
+        };
 
-          // timesliceによる自動セグメント（180秒ごと）の場合、即座に文字起こしを実行
-          if (recorder.state === "recording") {
-            console.log(`🎬 セグメント ${currentSegmentNum} を文字起こし開始`);
+        newRecorder.onstop = async () => {
+          if (isManualStopRef.current) {
+            // ユーザーの手動停止 - 最終処理
+            console.log(`🛑 録音停止 - 最終処理開始`);
 
-            // セグメント2以降の場合、Gemini API rate limitを避けるため少し待つ
-            if (currentSegmentNum > 1) {
-              console.log(`⏱️  セグメント ${currentSegmentNum}: Rate limit対策で3秒待機`);
-              await new Promise(resolve => setTimeout(resolve, 3000));
+            // 最後のセグメントを処理
+            if (segmentChunks.length > 0) {
+              currentSegmentNum += 1;
+              const audioBlob = new Blob(segmentChunks, { type: "audio/webm" });
+              console.log(`🎬 最終セグメント ${currentSegmentNum} を文字起こし開始 (${audioBlob.size} bytes)`);
+
+              if (currentSegmentNum > 1) {
+                await new Promise(resolve => setTimeout(resolve, 3000));
+              }
+
+              await transcribeSegment(audioBlob, currentSegmentNum);
             }
 
-            // 単一のBlobとして文字起こし（完全なWebMセグメント）
-            const audioBlob = new Blob([e.data], { type: "audio/webm;codecs=opus" });
-            transcribeSegment(audioBlob, currentSegmentNum);
-            setSegmentNumber(currentSegmentNum);
+            // ストリーム停止
+            stream.getTracks().forEach((track) => track.stop());
+            setActiveStream(null);
+
+            // 自動議事録作成
+            if (autoGenerateSummary) {
+              setTimeout(() => {
+                generateSummary();
+              }, 1000);
+            }
+          } else {
+            // 自動停止（セグメント区切り） - 文字起こしして再起動
+            console.log(`🔄 セグメント完了 - 文字起こしして再起動`);
+
+            if (segmentChunks.length > 0 && stream.active) {
+              currentSegmentNum += 1;
+              const audioBlob = new Blob(segmentChunks, { type: "audio/webm" });
+              console.log(`🎬 セグメント ${currentSegmentNum} を文字起こし開始 (${audioBlob.size} bytes, ${(audioBlob.size / 1024 / 1024).toFixed(2)} MB)`);
+
+              // Rate limit対策
+              if (currentSegmentNum > 1) {
+                console.log(`⏱️  セグメント ${currentSegmentNum}: Rate limit対策で3秒待機`);
+                await new Promise(resolve => setTimeout(resolve, 3000));
+              }
+
+              transcribeSegment(audioBlob, currentSegmentNum);
+              setSegmentNumber(currentSegmentNum);
+
+              // MediaRecorderを再起動
+              if (stream.active) {
+                console.log(`▶️  セグメント ${currentSegmentNum + 1} の録音開始`);
+                currentRecorder = initRecorder();
+                currentRecorder.start();
+                setMediaRecorder(currentRecorder);
+              }
+            }
           }
-        }
+        };
+
+        return newRecorder;
       };
 
-      recorder.onstop = async () => {
-        console.log(`🛑 録音停止 - 最終処理開始 (総chunks数: ${chunks.length})`);
-
-        // 最後のセグメントがあれば処理（onstopで受信したデータ）
-        // ondataavailableで既に処理されているので、ここでは何もしない
-
-        // ストリーム停止
-        stream.getTracks().forEach((track) => track.stop());
-        setActiveStream(null);
-
-        // 自動議事録作成が有効な場合、文字起こし後に自動実行
-        if (autoGenerateSummary) {
-          setTimeout(() => {
-            generateSummary();
-          }, 1000);
-        }
-      };
-
-      // 録音開始（180秒ごとにデータを自動生成）
-      recorder.start(180000);
-      setMediaRecorder(recorder);
-      setAudioChunks(chunks);
+      // 初回のMediaRecorder起動
+      isManualStopRef.current = false;
+      currentRecorder = initRecorder();
+      currentRecorder.start();
+      setMediaRecorder(currentRecorder);
       setIsRecording(true);
       setError(null);
 
-      // 録音時間のカウント開始（シンプルに時間表示のみ）
+      // 録音時間のカウント開始と3分ごとの自動停止
       setRecordingTime(0);
       const interval = setInterval(() => {
-        setRecordingTime((prev) => prev + 1);
+        setRecordingTime((prev) => {
+          const newTime = prev + 1;
+
+          // 3分（180秒）ごとにMediaRecorderを停止（自動再起動される）
+          if (newTime > 0 && newTime % 180 === 0 && currentRecorder?.state === "recording") {
+            console.log(`⏰ ${newTime / 60}分経過 - セグメント区切り`);
+            isManualStopRef.current = false;
+            currentRecorder.stop();
+          }
+
+          return newTime;
+        });
       }, 1000);
       setRecordingInterval(interval);
     } catch (err) {
@@ -299,6 +342,9 @@ export default function MeetingRecorder() {
 
   function stopRecording(): void {
     if (mediaRecorder && isRecording) {
+      // ユーザーの手動停止をマーク
+      isManualStopRef.current = true;
+
       mediaRecorder.stop();
       setIsRecording(false);
       setMediaRecorder(null);
