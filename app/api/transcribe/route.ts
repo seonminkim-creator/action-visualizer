@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export const runtime = "edge";
+// Node.js Runtimeに変更（Edgeの30秒制限を回避し、60秒まで実行可能）
+export const runtime = "nodejs";
+export const maxDuration = 60; // 最大60秒
 
 export async function POST(req: NextRequest) {
   try {
