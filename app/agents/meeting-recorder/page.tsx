@@ -118,7 +118,9 @@ export default function MeetingRecorder() {
             const errorData = await response.json();
             console.error(`❌ セグメント ${segmentNum} エラーレスポンス (試行${attempt}/${maxRetries}):`, errorData);
             if (errorData.error) {
-              errorMessage = `セグメント ${segmentNum} の文字起こしエラー: ${errorData.error}`;
+              // 詳細エラーメッセージも含めて表示
+              const detailsMsg = errorData.details ? ` [詳細: ${errorData.details}]` : '';
+              errorMessage = `セグメント ${segmentNum} の文字起こしエラー: ${errorData.error}${detailsMsg}`;
               errorDetails = JSON.stringify(errorData);
             }
           } catch (parseError) {

@@ -126,8 +126,18 @@ export async function POST(req: NextRequest) {
 
     // すべてのリトライが失敗した場合
     console.error(`❌ 音声認識に失敗しました（${maxRetries}回試行）:`, lastError);
+
+    // デバッグ用に詳細なエラーメッセージを返す
+    const errorMessage = typeof lastError === 'string'
+      ? lastError
+      : (lastError instanceof Error ? lastError.message : '不明なエラー');
+
     return NextResponse.json(
-      { error: "音声認識に失敗しました。もう一度お試しください。" },
+      {
+        error: "音声認識に失敗しました。もう一度お試しください。",
+        details: errorMessage,
+        attempts: maxRetries
+      },
       { status: 500 }
     );
   } catch (error) {
