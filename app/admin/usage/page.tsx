@@ -24,22 +24,24 @@ export default function AdminUsagePage() {
     setLoginError("");
     setIsLoading(true);
 
-    const credentials = btoa(`${username}:${password}`);
-    const authHeader = `Basic ${credentials}`;
-
     try {
-      const response = await fetch("/api/admin/stats", {
+      const response = await fetch("/api/admin/auth", {
+        method: "POST",
         headers: {
-          Authorization: authHeader,
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({ username, password }),
       });
 
-      if (response.ok) {
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        const authHeader = `Bearer ${data.token}`;
         setAuthCredentials(authHeader);
         setIsAuthenticated(true);
         loadData(authHeader);
       } else {
-        setLoginError("ユーザー名またはパスワードが正しくありません");
+        setLoginError(data.error || "ユーザー名またはパスワードが正しくありません");
       }
     } catch (error) {
       setLoginError("ログインに失敗しました");

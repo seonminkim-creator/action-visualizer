@@ -4,32 +4,34 @@ import { UsageStats, DailyStats } from "@/lib/types/admin";
 
 export const runtime = "nodejs";
 
-// 認証チェック
+// 認証チェック（トークンベース）
 function checkAuth(req: NextRequest): boolean {
   const authHeader = req.headers.get('authorization');
   if (!authHeader) return false;
 
-  const [type, credentials] = authHeader.split(' ');
-  if (type !== 'Basic') return false;
+  const token = authHeader.replace('Bearer ', '');
+  if (!token) return false;
 
-  const decoded = Buffer.from(credentials, 'base64').toString();
-  const [username, password] = decoded.split(':');
+  try {
+    const decoded = Buffer.from(token, 'base64').toString();
+    const [username, password] = decoded.split(':');
 
-  const validUsername = process.env.ADMIN_USERNAME || 'admin';
-  const validPassword = process.env.ADMIN_PASSWORD || 'password';
+    const validUsername = process.env.ADMIN_USERNAME || 'peco_admin';
+    const validPassword = process.env.ADMIN_PASSWORD || 'peco2024!secure';
 
-  return username === validUsername && password === validPassword;
+    return username === validUsername && password === validPassword;
+  } catch {
+    return false;
+  }
 }
 
 export async function GET(req: NextRequest) {
   // 認証チェック
   if (!checkAuth(req)) {
-    return new NextResponse('Unauthorized', {
-      status: 401,
-      headers: {
-        'WWW-Authenticate': 'Basic realm="Admin Area"',
-      },
-    });
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    );
   }
 
   try {
