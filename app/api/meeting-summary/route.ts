@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { appendLog, generateUserId } from "@/lib/utils/logger";
 
-// Node.js Runtimeに変更（最大300秒実行可能）
+// Vercel Pro最適化: Node.js Runtime + 長時間実行
 export const runtime = "nodejs";
-export const maxDuration = 60; // Vercel Pro: 最大60秒
+export const maxDuration = 300; // Vercel Proプラン: 最大300秒（5分）- 長い議事録生成に対応
 
 type MeetingSummary = {
   summary: {
@@ -51,13 +52,14 @@ ${transcript}
         body: JSON.stringify({
           contents: [{ parts: [{ text: SUMMARIZE_PROMPT }] }],
           generationConfig: {
-            temperature: 0.2, // より決定的に
+            temperature: 0.1, // Gemini API最適化: より決定的に高速化
             topP: 0.8,
             topK: 20,
-            maxOutputTokens: isVeryLong ? 2000 : 3000, // 超長文は出力も制限
+            maxOutputTokens: isVeryLong ? 2000 : 3000,
+            candidateCount: 1, // Gemini API最適化: 1つの候補のみ生成（高速化）
           },
         }),
-        signal: AbortSignal.timeout(50000), // 50秒タイムアウト（第1段階：要約）
+        signal: AbortSignal.timeout(120000), // Vercel Pro: 120秒タイムアウト（第1段階：要約）
       }
     );
 
@@ -77,6 +79,7 @@ ${transcript}
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
+  const userId = generateUserId(req);
 
   try {
     const { transcript } = (await req.json()) as { transcript?: string };
@@ -98,8 +101,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 文字数制限を緩和：30000文字まで直接処理
-    const characterThreshold = 30000;
+    // 文字数制限を緩和：35000文字まで直接処理（Vercel Pro最適化）
+    const characterThreshold = 35000;
     let processedTranscript = transcript.trim();
     let usedTwoStage = false;
 
@@ -108,7 +111,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error: "会議内容が長すぎます",
-          details: `文字数: ${processedTranscript.length}文字。30000文字以下にしてください。`,
+          details: `文字数: ${processedTranscript.length.toLocaleString()}文字。${characterThreshold.toLocaleString()}文字以下にしてください。`,
           processingTime: `${((Date.now() - startTime) / 1000).toFixed(1)}秒`,
         },
         { status: 400 }
@@ -160,7 +163,7 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
     console.log("🤖 Gemini APIで議事録を作成中...");
 
     let lastError = null;
-    const maxRetries = 3; // リトライ回数を削減
+    const maxRetries = 5; // Vercel Pro: より堅牢なリトライ戦略
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -182,10 +185,11 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
                 },
               ],
               generationConfig: {
-                temperature: 0.2, // さらに低く設定して高速化
+                temperature: 0.1, // Gemini API最適化: 決定的な生成で高速化
                 topP: 0.9,
-                topK: 30,
-                maxOutputTokens: 8192, // Gemini 2.5 Proの最大出力トークン数
+                topK: 20, // Gemini API最適化: より狭い範囲で高速化
+                maxOutputTokens: 8192,
+                candidateCount: 1, // Gemini API最適化: 1つの候補のみ生成
                 responseMimeType: "application/json",
                 responseSchema: {
                   type: "object",
@@ -241,7 +245,7 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
                 }
               },
             }),
-            signal: AbortSignal.timeout(50000), // 50秒タイムアウト
+            signal: AbortSignal.timeout(180000), // Vercel Pro: 180秒（3分）タイムアウト
           }
         );
 
@@ -253,6 +257,19 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
             const parsed = JSON.parse(textOut) as MeetingSummary;
             const duration = ((Date.now() - startTime) / 1000).toFixed(1);
             console.log(`✅ Gemini API成功（試行${attempt}回目、処理時間: ${duration}秒）`);
+
+            // ログ保存（成功）
+            appendLog({
+              id: `summary_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              timestamp: new Date().toISOString(),
+              userId,
+              action: 'meeting-summary',
+              status: 'success',
+              characterCount: processedTranscript.length,
+              processingTime: Date.now() - startTime,
+              userAgent: req.headers.get('user-agent') || undefined,
+            });
+
             return NextResponse.json(parsed);
           } catch (parseError) {
             console.error("JSON parse error:", parseError);
@@ -261,10 +278,10 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
           }
         }
 
-        if (response.status === 503 && attempt < maxRetries) {
-          // 短縮版バックオフ: 1秒 → 2秒
-          const backoffSeconds = attempt;
-          console.log(`⏳ Gemini APIリトライ ${attempt}/${maxRetries} (503エラー、${backoffSeconds}秒後に再試行)`);
+        if ((response.status >= 500 || response.status === 429) && attempt < maxRetries) {
+          // Vercel Pro: エクスポネンシャルバックオフ（余裕のある300秒制限）
+          const backoffSeconds = Math.min(Math.pow(2, attempt), 30); // 2, 4, 8, 16, 30秒
+          console.log(`⏳ Gemini APIリトライ ${attempt}/${maxRetries} (status=${response.status}、${backoffSeconds}秒後に再試行)`);
           await new Promise(resolve => setTimeout(resolve, backoffSeconds * 1000));
           continue;
         }
@@ -276,7 +293,8 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
         lastError = String(e);
         console.error(`Gemini API呼び出しエラー（試行${attempt}回目）:`, e);
         if (attempt < maxRetries) {
-          const backoffSeconds = attempt; // 短縮版: 1秒 → 2秒
+          // Vercel Pro: エクスポネンシャルバックオフ
+          const backoffSeconds = Math.min(Math.pow(2, attempt), 30);
           console.log(`⏳ リトライ ${attempt}/${maxRetries} (${backoffSeconds}秒後に再試行)`);
           await new Promise(resolve => setTimeout(resolve, backoffSeconds * 1000));
         }
@@ -285,6 +303,20 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
 
     const totalDuration = ((Date.now() - startTime) / 1000).toFixed(1);
     console.error(`❌ 議事録生成に失敗しました（${maxRetries}回試行、処理時間: ${totalDuration}秒）:`, lastError);
+
+    // ログ保存（失敗）
+    const errorMsg = typeof lastError === "string" ? lastError : (lastError as any)?.message || '不明なエラー';
+    appendLog({
+      id: `summary_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: new Date().toISOString(),
+      userId,
+      action: 'meeting-summary',
+      status: 'error',
+      characterCount: processedTranscript.length,
+      processingTime: Date.now() - startTime,
+      errorMessage: errorMsg,
+      userAgent: req.headers.get('user-agent') || undefined,
+    });
 
     let errorMessage = "議事録の生成に失敗しました。";
     let errorDetails = "";

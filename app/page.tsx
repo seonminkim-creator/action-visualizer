@@ -705,30 +705,54 @@ export default function Home() {
 
         {/* フッター */}
         <div style={{ marginTop: 48, textAlign: "center" }}>
-          <Link
-            href="/admin"
-            style={{
-              display: "inline-block",
-              fontSize: 12,
-              color: "#94a3b8",
-              textDecoration: "none",
-              padding: "8px 16px",
-              borderRadius: "6px",
-              border: "1px solid #e5e7eb",
-              transition: "all 0.2s",
-              marginBottom: 16
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "#667eea";
-              e.currentTarget.style.borderColor = "#667eea";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "#94a3b8";
-              e.currentTarget.style.borderColor = "#e5e7eb";
-            }}
-          >
-            ⚙️ システム管理
-          </Link>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", marginBottom: 16, flexWrap: "wrap" }}>
+            <Link
+              href="/admin"
+              style={{
+                display: "inline-block",
+                fontSize: 12,
+                color: "#94a3b8",
+                textDecoration: "none",
+                padding: "8px 16px",
+                borderRadius: "6px",
+                border: "1px solid #e5e7eb",
+                transition: "all 0.2s"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "#667eea";
+                e.currentTarget.style.borderColor = "#667eea";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "#94a3b8";
+                e.currentTarget.style.borderColor = "#e5e7eb";
+              }}
+            >
+              ⚙️ システム管理
+            </Link>
+            <Link
+              href="/admin/usage"
+              style={{
+                display: "inline-block",
+                fontSize: 12,
+                color: "#94a3b8",
+                textDecoration: "none",
+                padding: "8px 16px",
+                borderRadius: "6px",
+                border: "1px solid #e5e7eb",
+                transition: "all 0.2s"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "#667eea";
+                e.currentTarget.style.borderColor = "#667eea";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "#94a3b8";
+                e.currentTarget.style.borderColor = "#e5e7eb";
+              }}
+            >
+              📊 使用統計
+            </Link>
+          </div>
           <p style={{
             fontSize: 12,
             color: "#94a3b8",
