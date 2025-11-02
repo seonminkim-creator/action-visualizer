@@ -22,3 +22,12 @@ export type DailyReportInput = {
   destination?: string; // 訪問先（任意で事前入力可能）
   products?: string[]; // 製品名（任意で事前入力可能）
 };
+
+// フィードバックの型定義
+export type ReportFeedback = {
+  reportId: string;
+  rating: 'good' | 'bad';
+  comment?: string;
+  timestamp: string;
+  userId: string;
+};

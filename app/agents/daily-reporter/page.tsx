@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
-import { Loader2, Mic, Square, Copy, Check, FileText, Building2 } from "lucide-react";
+import { Loader2, Mic, Square, Copy, Check, FileText, Building2, ThumbsUp, ThumbsDown, History, X } from "lucide-react";
 import BackToHome from "../../components/BackToHome";
 import { DailyReport } from "@/lib/types/daily-report";
 
@@ -18,6 +18,18 @@ export default function DailyReporter() {
   const [recordingTime, setRecordingTime] = useState<number>(0);
   const [recordingInterval, setRecordingInterval] = useState<NodeJS.Timeout | null>(null);
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
+  const [copyFormat, setCopyFormat] = useState<"text" | "markdown">("text");
+  const [reportId, setReportId] = useState<string | null>(null);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState<boolean>(false);
+  const [feedbackRating, setFeedbackRating] = useState<"good" | "bad" | null>(null);
+  const [showHistory, setShowHistory] = useState<boolean>(false);
+  const [reportHistory, setReportHistory] = useState<Array<{
+    id: string;
+    date: string;
+    destination: string;
+    products: string[];
+    report: DailyReport;
+  }>>([]);
   const wakeLockRef = useRef<any>(null);
   const silentAudioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -26,6 +38,63 @@ export default function DailyReporter() {
     document.title = "営業日報くん | 営業AIポータル";
   }, []);
 
+  // ページ読み込み時に履歴を復元
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
+  // 履歴をLocalStorageから読み込み
+  function loadHistory() {
+    try {
+      const stored = localStorage.getItem("dailyReportHistory");
+      if (stored) {
+        const history = JSON.parse(stored);
+        setReportHistory(history);
+      }
+    } catch (err) {
+      console.error("履歴の読み込みに失敗:", err);
+    }
+  }
+
+  // 履歴をLocalStorageに保存
+  function saveToHistory(report: DailyReport) {
+    try {
+      const newEntry = {
+        id: `history_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        date: new Date().toISOString(),
+        destination: report.visitInfo.destination,
+        products: report.targetProducts,
+        report,
+      };
+
+      const stored = localStorage.getItem("dailyReportHistory");
+      const history = stored ? JSON.parse(stored) : [];
+
+      // 最新20件のみ保持
+      const updatedHistory = [newEntry, ...history].slice(0, 20);
+
+      localStorage.setItem("dailyReportHistory", JSON.stringify(updatedHistory));
+      setReportHistory(updatedHistory);
+
+      console.log("✅ 履歴に保存しました");
+    } catch (err) {
+      console.error("履歴の保存に失敗:", err);
+    }
+  }
+
+  // 履歴から日報を読み込み
+  function loadFromHistory(historyEntry: any) {
+    setResult(historyEntry.report);
+    setReportId(historyEntry.id);
+    setFeedbackSubmitted(false);
+    setFeedbackRating(null);
+    setShowHistory(false);
+
+    // 入力フィールドにも反映（オプション）
+    setDestination(historyEntry.destination || "");
+    setProducts(historyEntry.products?.join(", ") || "");
+  }
+
   // transcriptが変更されたら前回の結果をクリア
   useEffect(() => {
     if (result !== null) {
@@ -33,8 +102,36 @@ export default function DailyReporter() {
       setError(null);
       setErrorDetails(null);
       setProcessingTime(null);
+      setFeedbackSubmitted(false);
+      setFeedbackRating(null);
     }
   }, [transcript]);
+
+  // フィードバック送信
+  async function submitFeedback(rating: "good" | "bad"): Promise<void> {
+    if (!reportId) return;
+
+    try {
+      const res = await fetch("/api/daily-report-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reportId,
+          rating,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("フィードバックの送信に失敗しました");
+      }
+
+      setFeedbackSubmitted(true);
+      setFeedbackRating(rating);
+      console.log(`✅ フィードバック送信: ${rating}`);
+    } catch (err) {
+      console.error("フィードバック送信エラー:", err);
+    }
+  }
 
   // 録音開始
   async function startRecording(): Promise<void> {
@@ -226,6 +323,39 @@ ${visitSummary.challenges}
 ${visitSummary.nextSteps}`;
   }
 
+  // 日報全体をMarkdown形式で取得
+  function getFullReportMarkdown(): string {
+    if (!result) return "";
+    const { title, visitInfo, targetProducts, visitSummary } = result;
+    return `# ${title}
+
+## 訪問先
+${visitInfo.destination}
+
+## 参加者
+${visitInfo.participants.map(p => `- ${p}`).join('\n')}
+
+## 商談対象製品
+${targetProducts.map(p => `- ${p}`).join('\n')}
+
+## 訪問内容要約
+
+### ① 目的
+${visitSummary.purpose}
+
+### ② 結果
+${visitSummary.result}
+
+### ③ 提案
+${visitSummary.proposal}
+
+### ④ 課題
+${visitSummary.challenges}
+
+### ⑤ 次のステップ
+${visitSummary.nextSteps}`;
+  }
+
   // 日報を生成
   async function generateReport(): Promise<void> {
     if (!transcript.trim()) {
@@ -285,6 +415,15 @@ ${visitSummary.nextSteps}`;
 
       setResult(data.report);
       setProcessingTime(data.processingTime);
+
+      // レポートID生成
+      const newReportId = `report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      setReportId(newReportId);
+      setFeedbackSubmitted(false);
+      setFeedbackRating(null);
+
+      // 履歴に保存
+      saveToHistory(data.report);
     } catch (err) {
       console.error("Daily Report Error:", err);
       setError(
@@ -337,6 +476,30 @@ ${visitSummary.nextSteps}`;
             商談内容から営業日報を自動生成
           </p>
         </div>
+
+        {/* 履歴ボタン */}
+        {reportHistory.length > 0 && (
+          <button
+            onClick={() => setShowHistory(true)}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 8,
+              background: "var(--card-bg)",
+              color: "var(--text-secondary)",
+              border: "1px solid var(--card-border)",
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 16,
+            }}
+          >
+            <History style={{ width: 16, height: 16 }} />
+            履歴 ({reportHistory.length}件)
+          </button>
+        )}
 
         {!result && !loading && (
           <div
@@ -525,10 +688,31 @@ ${visitSummary.nextSteps}`;
           >
             商談内容を入力
           </label>
+
+          {/* 入力補助ヒント */}
+          <div style={{
+            background: "#f0f9ff",
+            border: "1px solid #bae6fd",
+            borderRadius: 8,
+            padding: 12,
+            marginBottom: 12,
+            fontSize: 12,
+            color: "#0c4a6e",
+            lineHeight: 1.8
+          }}>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>✓ 入力のコツ</div>
+            <div style={{ paddingLeft: 8 }}>
+              • 訪問先名と参加者を明記<br />
+              • 具体的な数値（面積、使用量、金額等）<br />
+              • 顧客の反応や懸念点<br />
+              • 次回の約束や期限
+            </div>
+          </div>
+
           <textarea
             value={transcript}
             onChange={(e) => setTranscript(e.target.value)}
-            placeholder="例: 本日は○○農園の田中様と、春の育苗計画について打ち合わせを行いました..."
+            placeholder="例: ○○農園の田中様を訪問。大豆5haで除草に困っているとのこと。パワーガイザー液剤を提案し、まず1haで試験したいと..."
             style={{
               width: "100%",
               minHeight: 200,
@@ -670,6 +854,8 @@ ${visitSummary.nextSteps}`;
                 marginBottom: 16,
                 paddingBottom: 8,
                 borderBottom: "2px solid var(--card-border)",
+                flexWrap: "wrap",
+                gap: 12,
               }}
             >
               <h2
@@ -682,116 +868,187 @@ ${visitSummary.nextSteps}`;
               >
                 📋 営業日報
               </h2>
-              <button
-                onClick={() => copyToClipboard(getFullReportText(), "full")}
-                style={{
-                  padding: "6px 12px",
-                  borderRadius: 6,
-                  background: copiedSection === "full" ? "#10b981" : "var(--card-bg)",
-                  color: copiedSection === "full" ? "white" : "var(--text-secondary)",
-                  border: "1px solid var(--card-border)",
-                  cursor: "pointer",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  transition: "all 0.2s",
-                }}
-              >
-                {copiedSection === "full" ? (
-                  <>
-                    <Check style={{ width: 14, height: 14 }} />
-                    コピー完了
-                  </>
-                ) : (
-                  <>
-                    <Copy style={{ width: 14, height: 14 }} />
-                    全体をコピー
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* タイトル */}
-            <div style={{ marginBottom: 16 }}>
-              <h3
-                style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: "var(--text-secondary)",
-                  marginBottom: 8,
-                }}
-              >
-                タイトル
-              </h3>
-              <p style={{ fontSize: 16, color: "var(--foreground)", lineHeight: 1.7, margin: 0, fontWeight: 600 }}>
-                {result.title}
-              </p>
-            </div>
-
-            {/* 訪問先・参加者 */}
-            <div style={{ marginBottom: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              <div>
-                <h3
-                  style={{
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: "var(--text-secondary)",
-                    marginBottom: 8,
-                  }}
-                >
-                  訪問先
-                </h3>
-                <p style={{ fontSize: 14, color: "var(--foreground)", lineHeight: 1.7, margin: 0 }}>
-                  {result.visitInfo.destination}
-                </p>
-              </div>
-              <div>
-                <h3
-                  style={{
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: "var(--text-secondary)",
-                    marginBottom: 8,
-                  }}
-                >
-                  参加者
-                </h3>
-                <p style={{ fontSize: 14, color: "var(--foreground)", lineHeight: 1.7, margin: 0 }}>
-                  {result.visitInfo.participants.join(", ")}
-                </p>
-              </div>
-            </div>
-
-            {/* 商談対象製品 */}
-            <div style={{ marginBottom: 16 }}>
-              <h3
-                style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: "var(--text-secondary)",
-                  marginBottom: 8,
-                }}
-              >
-                商談対象製品
-              </h3>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {result.targetProducts.map((product, i) => (
-                  <span
-                    key={i}
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {/* フォーマット選択 */}
+                <div style={{ display: "flex", gap: 4, background: "var(--background)", borderRadius: 6, padding: 2 }}>
+                  <button
+                    onClick={() => setCopyFormat("text")}
                     style={{
-                      padding: "4px 12px",
-                      borderRadius: 6,
-                      background: "#dbeafe",
-                      color: "#1e40af",
-                      fontSize: 13,
-                      fontWeight: 500,
+                      padding: "4px 10px",
+                      borderRadius: 4,
+                      background: copyFormat === "text" ? "#667eea" : "transparent",
+                      color: copyFormat === "text" ? "white" : "var(--text-secondary)",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      transition: "all 0.2s",
                     }}
                   >
-                    {product}
-                  </span>
-                ))}
+                    テキスト
+                  </button>
+                  <button
+                    onClick={() => setCopyFormat("markdown")}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 4,
+                      background: copyFormat === "markdown" ? "#667eea" : "transparent",
+                      color: copyFormat === "markdown" ? "white" : "var(--text-secondary)",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      transition: "all 0.2s",
+                    }}
+                  >
+                    Markdown
+                  </button>
+                </div>
+
+                {/* コピーボタン */}
+                <button
+                  onClick={() => copyToClipboard(
+                    copyFormat === "markdown" ? getFullReportMarkdown() : getFullReportText(),
+                    "full"
+                  )}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: 6,
+                    background: copiedSection === "full" ? "#10b981" : "var(--card-bg)",
+                    color: copiedSection === "full" ? "white" : "var(--text-secondary)",
+                    border: "1px solid var(--card-border)",
+                    cursor: "pointer",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    transition: "all 0.2s",
+                  }}
+                >
+                  {copiedSection === "full" ? (
+                    <>
+                      <Check style={{ width: 14, height: 14 }} />
+                      コピー完了
+                    </>
+                  ) : (
+                    <>
+                      <Copy style={{ width: 14, height: 14 }} />
+                      コピー
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* 日報基本情報 */}
+            <div style={{ marginBottom: 24, paddingBottom: 20, borderBottom: "1px solid var(--card-border)" }}>
+              {/* タイトル */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "var(--text-secondary)",
+                  marginBottom: 8,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px"
+                }}>
+                  日報タイトル
+                </div>
+                <h2 style={{
+                  fontSize: 20,
+                  color: "var(--foreground)",
+                  lineHeight: 1.5,
+                  margin: 0,
+                  fontWeight: 700
+                }}>
+                  {result.title}
+                </h2>
+              </div>
+
+              {/* 訪問先・参加者 */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 16, marginBottom: 16 }}>
+                <div style={{
+                  padding: 12,
+                  background: "var(--background)",
+                  borderRadius: 8,
+                  border: "1px solid var(--card-border)"
+                }}>
+                  <div style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "var(--text-secondary)",
+                    marginBottom: 6,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px"
+                  }}>
+                    📍 訪問先
+                  </div>
+                  <div style={{ fontSize: 15, color: "var(--foreground)", lineHeight: 1.6, fontWeight: 600 }}>
+                    {result.visitInfo.destination}
+                  </div>
+                </div>
+                <div style={{
+                  padding: 12,
+                  background: "var(--background)",
+                  borderRadius: 8,
+                  border: "1px solid var(--card-border)"
+                }}>
+                  <div style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "var(--text-secondary)",
+                    marginBottom: 6,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px"
+                  }}>
+                    👥 参加者
+                  </div>
+                  <div style={{ fontSize: 14, color: "var(--foreground)", lineHeight: 1.7 }}>
+                    {result.visitInfo.participants.map((p, i) => (
+                      <div key={i} style={{ marginBottom: i < result.visitInfo.participants.length - 1 ? 4 : 0 }}>
+                        • {p}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* 商談対象製品 */}
+              <div style={{
+                padding: 12,
+                background: "var(--background)",
+                borderRadius: 8,
+                border: "1px solid var(--card-border)"
+              }}>
+                <div style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--text-secondary)",
+                  marginBottom: 8,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px"
+                }}>
+                  🏷️ 商談対象製品
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {result.targetProducts.map((product, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        padding: "6px 14px",
+                        borderRadius: 6,
+                        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                        color: "white",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        boxShadow: "0 2px 4px rgba(102, 126, 234, 0.2)"
+                      }}
+                    >
+                      {product}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -799,41 +1056,250 @@ ${visitSummary.nextSteps}`;
             <div>
               <h3
                 style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: "var(--text-secondary)",
-                  marginBottom: 12,
+                  fontSize: 16,
+                  fontWeight: 700,
+                  color: "var(--foreground)",
+                  marginBottom: 16,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8
                 }}
               >
-                訪問内容要約
+                📝 訪問内容要約
               </h3>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <div style={{ padding: 12, background: "var(--background)", borderRadius: 8, borderLeft: "4px solid #667eea" }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#667eea", marginBottom: 4 }}>① 目的</div>
-                  <div style={{ fontSize: 14, color: "var(--foreground)", lineHeight: 1.7 }}>{result.visitSummary.purpose}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div style={{
+                  padding: 14,
+                  background: "var(--background)",
+                  borderRadius: 8,
+                  borderLeft: "4px solid #667eea",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
+                }}>
+                  <div style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "#667eea",
+                    marginBottom: 8,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px"
+                  }}>
+                    ① 目的
+                  </div>
+                  <div style={{
+                    fontSize: 14,
+                    color: "var(--foreground)",
+                    lineHeight: 1.8,
+                    whiteSpace: "pre-wrap"
+                  }}>
+                    {result.visitSummary.purpose}
+                  </div>
                 </div>
 
-                <div style={{ padding: 12, background: "var(--background)", borderRadius: 8, borderLeft: "4px solid #10b981" }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#10b981", marginBottom: 4 }}>② 結果</div>
-                  <div style={{ fontSize: 14, color: "var(--foreground)", lineHeight: 1.7 }}>{result.visitSummary.result}</div>
+                <div style={{
+                  padding: 14,
+                  background: "var(--background)",
+                  borderRadius: 8,
+                  borderLeft: "4px solid #10b981",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
+                }}>
+                  <div style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "#10b981",
+                    marginBottom: 8,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px"
+                  }}>
+                    ② 結果
+                  </div>
+                  <div style={{
+                    fontSize: 14,
+                    color: "var(--foreground)",
+                    lineHeight: 1.8,
+                    whiteSpace: "pre-wrap"
+                  }}>
+                    {result.visitSummary.result}
+                  </div>
                 </div>
 
-                <div style={{ padding: 12, background: "var(--background)", borderRadius: 8, borderLeft: "4px solid #f59e0b" }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#f59e0b", marginBottom: 4 }}>③ 提案</div>
-                  <div style={{ fontSize: 14, color: "var(--foreground)", lineHeight: 1.7 }}>{result.visitSummary.proposal}</div>
+                <div style={{
+                  padding: 14,
+                  background: "var(--background)",
+                  borderRadius: 8,
+                  borderLeft: "4px solid #f59e0b",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
+                }}>
+                  <div style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "#f59e0b",
+                    marginBottom: 8,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px"
+                  }}>
+                    ③ 提案
+                  </div>
+                  <div style={{
+                    fontSize: 14,
+                    color: "var(--foreground)",
+                    lineHeight: 1.8,
+                    whiteSpace: "pre-wrap"
+                  }}>
+                    {result.visitSummary.proposal}
+                  </div>
                 </div>
 
-                <div style={{ padding: 12, background: "var(--background)", borderRadius: 8, borderLeft: "4px solid #ef4444" }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#ef4444", marginBottom: 4 }}>④ 課題</div>
-                  <div style={{ fontSize: 14, color: "var(--foreground)", lineHeight: 1.7 }}>{result.visitSummary.challenges}</div>
+                <div style={{
+                  padding: 14,
+                  background: "var(--background)",
+                  borderRadius: 8,
+                  borderLeft: "4px solid #ef4444",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
+                }}>
+                  <div style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "#ef4444",
+                    marginBottom: 8,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px"
+                  }}>
+                    ④ 課題
+                  </div>
+                  <div style={{
+                    fontSize: 14,
+                    color: "var(--foreground)",
+                    lineHeight: 1.8,
+                    whiteSpace: "pre-wrap"
+                  }}>
+                    {result.visitSummary.challenges}
+                  </div>
                 </div>
 
-                <div style={{ padding: 12, background: "var(--background)", borderRadius: 8, borderLeft: "4px solid #8b5cf6" }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#8b5cf6", marginBottom: 4 }}>⑤ 次のステップ</div>
-                  <div style={{ fontSize: 14, color: "var(--foreground)", lineHeight: 1.7 }}>{result.visitSummary.nextSteps}</div>
+                <div style={{
+                  padding: 14,
+                  background: "var(--background)",
+                  borderRadius: 8,
+                  borderLeft: "4px solid #8b5cf6",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
+                }}>
+                  <div style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "#8b5cf6",
+                    marginBottom: 8,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px"
+                  }}>
+                    ⑤ 次のステップ
+                  </div>
+                  <div style={{
+                    fontSize: 14,
+                    color: "var(--foreground)",
+                    lineHeight: 1.8,
+                    whiteSpace: "pre-wrap"
+                  }}>
+                    {result.visitSummary.nextSteps}
+                  </div>
                 </div>
               </div>
+            </div>
+
+            {/* フィードバックセクション */}
+            <div style={{
+              marginTop: 20,
+              paddingTop: 16,
+              borderTop: "1px solid var(--card-border)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: 12,
+            }}>
+              <div style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500 }}>
+                この日報は役に立ちましたか？
+              </div>
+
+              {!feedbackSubmitted ? (
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => submitFeedback("good")}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: 6,
+                      background: "var(--card-bg)",
+                      color: "var(--text-secondary)",
+                      border: "1px solid var(--card-border)",
+                      cursor: "pointer",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      transition: "all 0.2s",
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.background = "#10b981";
+                      e.currentTarget.style.color = "white";
+                      e.currentTarget.style.borderColor = "#10b981";
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.background = "var(--card-bg)";
+                      e.currentTarget.style.color = "var(--text-secondary)";
+                      e.currentTarget.style.borderColor = "var(--card-border)";
+                    }}
+                  >
+                    <ThumbsUp style={{ width: 14, height: 14 }} />
+                    良い
+                  </button>
+                  <button
+                    onClick={() => submitFeedback("bad")}
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: 6,
+                      background: "var(--card-bg)",
+                      color: "var(--text-secondary)",
+                      border: "1px solid var(--card-border)",
+                      cursor: "pointer",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      transition: "all 0.2s",
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.background = "#ef4444";
+                      e.currentTarget.style.color = "white";
+                      e.currentTarget.style.borderColor = "#ef4444";
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.background = "var(--card-bg)";
+                      e.currentTarget.style.color = "var(--text-secondary)";
+                      e.currentTarget.style.borderColor = "var(--card-border)";
+                    }}
+                  >
+                    <ThumbsDown style={{ width: 14, height: 14 }} />
+                    改善が必要
+                  </button>
+                </div>
+              ) : (
+                <div style={{
+                  padding: "6px 14px",
+                  borderRadius: 6,
+                  background: feedbackRating === "good" ? "#d1fae5" : "#fee2e2",
+                  color: feedbackRating === "good" ? "#065f46" : "#991b1b",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}>
+                  <Check style={{ width: 14, height: 14 }} />
+                  フィードバックを送信しました
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -848,6 +1314,158 @@ ${visitSummary.nextSteps}`;
         >
           営業日報くん - 商談内容から営業日報を自動生成
         </p>
+
+        {/* 履歴モーダル */}
+        {showHistory && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0, 0, 0, 0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+              padding: 16,
+            }}
+            onClick={() => setShowHistory(false)}
+          >
+            <div
+              style={{
+                background: "var(--card-bg)",
+                borderRadius: 12,
+                padding: 24,
+                maxWidth: 800,
+                width: "100%",
+                maxHeight: "80vh",
+                overflow: "auto",
+                boxShadow: "0 10px 40px rgba(0,0,0,0.3)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 20,
+                  paddingBottom: 16,
+                  borderBottom: "2px solid var(--card-border)",
+                }}
+              >
+                <h2
+                  style={{
+                    fontSize: 20,
+                    fontWeight: 600,
+                    color: "var(--foreground)",
+                    margin: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                  }}
+                >
+                  <History style={{ width: 20, height: 20 }} />
+                  日報履歴
+                </h2>
+                <button
+                  onClick={() => setShowHistory(false)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "var(--text-secondary)",
+                    padding: 4,
+                  }}
+                >
+                  <X style={{ width: 20, height: 20 }} />
+                </button>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {reportHistory.map((entry) => (
+                  <div
+                    key={entry.id}
+                    style={{
+                      padding: 16,
+                      background: "var(--background)",
+                      borderRadius: 8,
+                      border: "1px solid var(--card-border)",
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                    }}
+                    onClick={() => loadFromHistory(entry)}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.borderColor = "#667eea";
+                      e.currentTarget.style.boxShadow = "0 2px 8px rgba(102, 126, 234, 0.2)";
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.borderColor = "var(--card-border)";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 600,
+                        color: "var(--foreground)",
+                        marginBottom: 8,
+                      }}
+                    >
+                      {entry.report.title}
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 12,
+                        fontSize: 12,
+                        color: "var(--text-secondary)",
+                        marginBottom: 6,
+                      }}
+                    >
+                      <span>📍 {entry.destination}</span>
+                      <span>📅 {new Date(entry.date).toLocaleDateString("ja-JP")}</span>
+                    </div>
+                    {entry.products.length > 0 && (
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+                        {entry.products.map((product, i) => (
+                          <span
+                            key={i}
+                            style={{
+                              padding: "2px 8px",
+                              borderRadius: 4,
+                              background: "#e0e7ff",
+                              color: "#4338ca",
+                              fontSize: 11,
+                              fontWeight: 500,
+                            }}
+                          >
+                            {product}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {reportHistory.length === 0 && (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: 40,
+                    color: "var(--text-secondary)",
+                    fontSize: 14,
+                  }}
+                >
+                  まだ履歴がありません
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
