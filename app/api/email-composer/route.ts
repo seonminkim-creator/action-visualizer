@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Node.js Runtimeに変更（最大300秒実行可能）
+// Vercel Pro最適化: Node.js Runtime + 長時間実行
 export const runtime = "nodejs";
-export const maxDuration = 60; // Vercel Pro: 最大60秒
+export const maxDuration = 300; // Vercel Proプラン: 最大300秒（5分）
 
 type TaskType = "reply" | "compose" | "revise";
 
@@ -138,6 +138,7 @@ ${additionalInfo ? `【添削指示】\n${additionalInfo}\n` : ""}
         topP: 0.95,
         topK: 40,
         maxOutputTokens: 2048,
+        candidateCount: 1, // Gemini API最適化: 1つの候補のみ生成（高速化）
       },
     };
 
@@ -153,7 +154,7 @@ ${additionalInfo ? `【添削指示】\n${additionalInfo}\n` : ""}
             "Content-Type": "application/json",
           },
           body: JSON.stringify(requestBody),
-          signal: AbortSignal.timeout(50000), // 50秒タイムアウト
+          signal: AbortSignal.timeout(180000), // Vercel Pro: 180秒（3分）タイムアウト
         });
 
         if (response.ok) {

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { CheckSquare, Calendar, Mail, MessageSquare, Sprout, Settings, User } from "lucide-react";
+import { CheckSquare, Calendar, Mail, MessageSquare, Sprout, Settings, User, FileText } from "lucide-react";
 import { useState, useEffect } from "react";
 
 type Agent = {
@@ -41,6 +41,16 @@ const agents: Agent[] = [
     icon: <MessageSquare size={32} />,
     path: "/agents/meeting-recorder",
     gradient: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
+    status: "active",
+    badge: "New!"
+  },
+  {
+    id: "daily-reporter",
+    title: "営業日報くん",
+    description: "商談内容から日報を自動生成",
+    icon: <FileText size={32} />,
+    path: "/agents/daily-reporter",
+    gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
     status: "active",
     badge: "New!"
   },

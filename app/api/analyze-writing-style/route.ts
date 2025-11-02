@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export const runtime = "edge";
+// Vercel Pro最適化: Node.js Runtime + 長時間実行
+export const runtime = "nodejs";
+export const maxDuration = 300; // Vercel Proプラン: 最大300秒（5分）
 
 export async function POST(req: NextRequest) {
   try {

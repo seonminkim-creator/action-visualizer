@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Node.js Runtimeに変更（最大300秒実行可能）
+// Vercel Pro最適化: Node.js Runtime + 長時間実行
 export const runtime = "nodejs";
-export const maxDuration = 60; // Vercel Pro: 最大60秒
+export const maxDuration = 300; // Vercel Proプラン: 最大300秒（5分）
 
 type TopicCategory = "weather" | "market" | "subsidy" | "safety" | "events";
 
