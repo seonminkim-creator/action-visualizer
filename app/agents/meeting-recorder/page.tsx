@@ -50,6 +50,7 @@ export default function MeetingRecorder() {
   const [processingSegments, setProcessingSegments] = useState<Set<number>>(new Set()); // 処理中のセグメント番号
   const isManualStopRef = useRef<boolean>(false); // ユーザーの手動停止フラグ
   const wakeLockRef = useRef<any>(null); // Wake Lock参照
+  const silentAudioRef = useRef<HTMLAudioElement | null>(null); // iOS用無音オーディオ参照
 
   // LocalStorageから設定と履歴を読み込み
   useEffect(() => {
@@ -221,8 +222,11 @@ export default function MeetingRecorder() {
 
   async function startRecording(): Promise<void> {
     try {
-      // Wake Lock APIで画面スリープを防止（モバイル対応）
-      if ('wakeLock' in navigator) {
+      // iOS判定
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+
+      // Wake Lock APIで画面スリープを防止（Android Chrome対応）
+      if ('wakeLock' in navigator && !isIOS) {
         try {
           wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
           console.log('🔒 Wake Lock 有効化（画面スリープ防止）');
@@ -232,6 +236,21 @@ export default function MeetingRecorder() {
           });
         } catch (err) {
           console.warn('⚠️ Wake Lock 取得失敗:', err);
+        }
+      }
+
+      // iOS用：無音オーディオで画面スリープを防止
+      if (isIOS) {
+        try {
+          // 無音オーディオを作成（短い無音のデータURL）
+          const silentAudio = new Audio('data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA/+M4wAAAAAAAAAAAAEluZm8AAAAPAAAABQAAAbAAqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV//////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAQKAAAAAAAAAbC9Zfjh/+MYxAALACwAAP/AADwQKVE62Zc8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
+          silentAudio.loop = true;
+          silentAudio.volume = 0.01; // 極小音量
+          await silentAudio.play();
+          silentAudioRef.current = silentAudio;
+          console.log('🎵 無音オーディオ再生開始（iOS画面スリープ防止）');
+        } catch (err) {
+          console.warn('⚠️ 無音オーディオ再生失敗:', err);
         }
       }
 
@@ -416,6 +435,13 @@ export default function MeetingRecorder() {
           console.log('🔓 Wake Lock 手動解除');
           wakeLockRef.current = null;
         });
+      }
+
+      // iOS用無音オーディオ停止
+      if (silentAudioRef.current) {
+        silentAudioRef.current.pause();
+        silentAudioRef.current = null;
+        console.log('🔇 無音オーディオ停止');
       }
 
       // システム音声モードのクリーンアップ
