@@ -34,7 +34,6 @@ export default function MeetingRecorder() {
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
-  const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
   const [recordingMode, setRecordingMode] = useState<"microphone" | "system">("microphone");
   const [isMicMuted, setIsMicMuted] = useState<boolean>(false);
   const [micGainNode, setMicGainNode] = useState<GainNode | null>(null);
@@ -48,7 +47,9 @@ export default function MeetingRecorder() {
   const [segmentNumber, setSegmentNumber] = useState<number>(0);
   const [activeStream, setActiveStream] = useState<MediaStream | null>(null);
   const [currentAudioChunks, setCurrentAudioChunks] = useState<Blob[]>([]);
+  const [processingSegments, setProcessingSegments] = useState<Set<number>>(new Set()); // 処理中のセグメント番号
   const isManualStopRef = useRef<boolean>(false); // ユーザーの手動停止フラグ
+  const wakeLockRef = useRef<any>(null); // Wake Lock参照
 
   // LocalStorageから設定と履歴を読み込み
   useEffect(() => {
@@ -65,7 +66,25 @@ export default function MeetingRecorder() {
         console.error("履歴の読み込みに失敗:", e);
       }
     }
-  }, []);
+
+    // Wake Lock再取得（画面が再度アクティブになった時）
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && isRecording && 'wakeLock' in navigator) {
+        try {
+          wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+          console.log('🔒 Wake Lock 再取得（画面復帰）');
+        } catch (err) {
+          console.warn('⚠️ Wake Lock 再取得失敗:', err);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isRecording]);
 
   // 設定をLocalStorageに保存
   useEffect(() => {
@@ -92,96 +111,130 @@ export default function MeetingRecorder() {
   // セグメントを文字起こしする関数
   async function transcribeSegment(audioBlob: Blob, segmentNum: number): Promise<void> {
     console.log(`🎤 セグメント ${segmentNum} の文字起こし開始 (${audioBlob.size} bytes, type: ${audioBlob.type})`);
-    setIsTranscribing(true);
+
+    // 処理中セグメントに追加
+    setProcessingSegments(prev => new Set(prev).add(segmentNum));
 
     // リトライロジック（最大3回、5秒間隔）
     const maxRetries = 3;
     let lastError: Error | null = null;
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        const formData = new FormData();
-        formData.append("audio", audioBlob);
+    try {
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          const formData = new FormData();
+          formData.append("audio", audioBlob);
 
-        console.log(`📤 セグメント ${segmentNum} を送信中... (試行${attempt}/${maxRetries}, ${(audioBlob.size / 1024 / 1024).toFixed(2)} MB)`);
+          console.log(`📤 セグメント ${segmentNum} を送信中... (試行${attempt}/${maxRetries}, ${(audioBlob.size / 1024 / 1024).toFixed(2)} MB)`);
 
-        const response = await fetch("/api/transcribe", {
-          method: "POST",
-          body: formData,
-        });
+          const response = await fetch("/api/transcribe", {
+            method: "POST",
+            body: formData,
+          });
 
-        console.log(`📥 セグメント ${segmentNum} のレスポンス: status=${response.status}, ok=${response.ok} (試行${attempt}/${maxRetries})`);
+          console.log(`📥 セグメント ${segmentNum} のレスポンス: status=${response.status}, ok=${response.ok} (試行${attempt}/${maxRetries})`);
 
-        if (!response.ok) {
-          let errorMessage = "文字起こしに失敗しました";
-          let errorDetails = "";
-          try {
-            const errorData = await response.json();
-            console.error(`❌ セグメント ${segmentNum} エラーレスポンス (試行${attempt}/${maxRetries}):`, errorData);
-            if (errorData.error) {
-              // 詳細エラーメッセージも含めて表示
-              const detailsMsg = errorData.details ? ` [詳細: ${errorData.details}]` : '';
-              errorMessage = `セグメント ${segmentNum} の文字起こしエラー: ${errorData.error}${detailsMsg}`;
-              errorDetails = JSON.stringify(errorData);
+          if (!response.ok) {
+            let errorMessage = "文字起こしに失敗しました";
+            let errorDetails = "";
+            try {
+              const errorData = await response.json();
+              console.error(`❌ セグメント ${segmentNum} エラーレスポンス (試行${attempt}/${maxRetries}):`, errorData);
+              if (errorData.error) {
+                // 詳細エラーメッセージも含めて表示
+                const detailsMsg = errorData.details ? ` [詳細: ${errorData.details}]` : '';
+                errorMessage = `セグメント ${segmentNum} の文字起こしエラー: ${errorData.error}${detailsMsg}`;
+                errorDetails = JSON.stringify(errorData);
+              }
+            } catch (parseError) {
+              console.error(`❌ セグメント ${segmentNum} エラーレスポンスのパース失敗 (試行${attempt}/${maxRetries}):`, parseError);
+              errorMessage = `セグメント ${segmentNum} の文字起こしに失敗 (${response.status})`;
             }
-          } catch (parseError) {
-            console.error(`❌ セグメント ${segmentNum} エラーレスポンスのパース失敗 (試行${attempt}/${maxRetries}):`, parseError);
-            errorMessage = `セグメント ${segmentNum} の文字起こしに失敗 (${response.status})`;
-          }
-          const error = new Error(errorMessage);
-          (error as any).details = errorDetails;
-          lastError = error;
+            const error = new Error(errorMessage);
+            (error as any).details = errorDetails;
+            lastError = error;
 
-          // 500番台エラーの場合はリトライ
-          if (response.status >= 500 && attempt < maxRetries) {
+            // 500番台エラーの場合はリトライ
+            if (response.status >= 500 && attempt < maxRetries) {
+              console.log(`⏳ セグメント ${segmentNum} をリトライ中... (${attempt}/${maxRetries}、5秒後に再試行)`);
+              await new Promise(resolve => setTimeout(resolve, 5000));
+              continue;
+            }
+
+            throw error;
+          }
+
+          const data = await response.json();
+
+          if (!data.transcription || data.transcription.trim() === "") {
+            console.warn(`⚠️ セグメント ${segmentNum} は音声が認識できませんでした`);
+            return;
+          }
+
+          const newTranscript = data.transcription;
+          setTranscript((prev) => {
+            const separator = prev ? "\n\n" : "";
+            return prev + separator + `[セグメント ${segmentNum}]\n${newTranscript}`;
+          });
+
+          console.log(`✅ セグメント ${segmentNum} の文字起こし完了 (試行${attempt}回目で成功)`);
+
+          // 処理中セグメントから削除
+          setProcessingSegments(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(segmentNum);
+            return newSet;
+          });
+
+          return; // 成功したら即座に終了
+        } catch (err) {
+          console.error(`❌ セグメント ${segmentNum} の文字起こしエラー (試行${attempt}/${maxRetries}):`, err);
+          lastError = err instanceof Error ? err : new Error(`セグメント ${segmentNum} の文字起こし中にエラーが発生しました`);
+
+          // ネットワークエラーなどの場合はリトライ
+          if (attempt < maxRetries) {
             console.log(`⏳ セグメント ${segmentNum} をリトライ中... (${attempt}/${maxRetries}、5秒後に再試行)`);
             await new Promise(resolve => setTimeout(resolve, 5000));
             continue;
           }
-
-          throw error;
-        }
-
-        const data = await response.json();
-
-        if (!data.transcription || data.transcription.trim() === "") {
-          console.warn(`⚠️ セグメント ${segmentNum} は音声が認識できませんでした`);
-          return;
-        }
-
-        const newTranscript = data.transcription;
-        setTranscript((prev) => {
-          const separator = prev ? "\n\n" : "";
-          return prev + separator + `[セグメント ${segmentNum}]\n${newTranscript}`;
-        });
-
-        console.log(`✅ セグメント ${segmentNum} の文字起こし完了 (試行${attempt}回目で成功)`);
-        return; // 成功したら即座に終了
-      } catch (err) {
-        console.error(`❌ セグメント ${segmentNum} の文字起こしエラー (試行${attempt}/${maxRetries}):`, err);
-        lastError = err instanceof Error ? err : new Error(`セグメント ${segmentNum} の文字起こし中にエラーが発生しました`);
-
-        // ネットワークエラーなどの場合はリトライ
-        if (attempt < maxRetries) {
-          console.log(`⏳ セグメント ${segmentNum} をリトライ中... (${attempt}/${maxRetries}、5秒後に再試行)`);
-          await new Promise(resolve => setTimeout(resolve, 5000));
-          continue;
         }
       }
-    }
 
-    // すべてのリトライが失敗した場合
-    console.error(`❌ セグメント ${segmentNum} の文字起こしに失敗しました (${maxRetries}回試行)`);
-    setError(
-      lastError instanceof Error
-        ? lastError.message
-        : `セグメント ${segmentNum} の文字起こし中にエラーが発生しました`
-    );
-    setIsTranscribing(false);
+      // すべてのリトライが失敗した場合
+      console.error(`❌ セグメント ${segmentNum} の文字起こしに失敗しました (${maxRetries}回試行)`);
+      setError(
+        lastError instanceof Error
+          ? lastError.message
+          : `セグメント ${segmentNum} の文字起こし中にエラーが発生しました`
+      );
+    } catch (err) {
+      console.error(`❌ セグメント ${segmentNum} で予期しないエラー:`, err);
+    } finally {
+      // 処理中セグメントから必ず削除
+      setProcessingSegments(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(segmentNum);
+        return newSet;
+      });
+    }
   }
 
   async function startRecording(): Promise<void> {
     try {
+      // Wake Lock APIで画面スリープを防止（モバイル対応）
+      if ('wakeLock' in navigator) {
+        try {
+          wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+          console.log('🔒 Wake Lock 有効化（画面スリープ防止）');
+
+          wakeLockRef.current.addEventListener('release', () => {
+            console.log('🔓 Wake Lock 解除');
+          });
+        } catch (err) {
+          console.warn('⚠️ Wake Lock 取得失敗:', err);
+        }
+      }
+
       let stream: MediaStream;
 
       if (recordingMode === "microphone") {
@@ -317,15 +370,15 @@ export default function MeetingRecorder() {
       setIsRecording(true);
       setError(null);
 
-      // 録音時間のカウント開始と3分ごとの自動停止
+      // 録音時間のカウント開始と2分30秒ごとの自動停止
       setRecordingTime(0);
       const interval = setInterval(() => {
         setRecordingTime((prev) => {
           const newTime = prev + 1;
 
-          // 3分（180秒）ごとにMediaRecorderを停止（自動再起動される）
-          if (newTime > 0 && newTime % 180 === 0 && currentRecorder?.state === "recording") {
-            console.log(`⏰ ${newTime / 60}分経過 - セグメント区切り`);
+          // 2分30秒（150秒）ごとにMediaRecorderを停止（自動再起動される）
+          if (newTime > 0 && newTime % 150 === 0 && currentRecorder?.state === "recording") {
+            console.log(`⏰ ${(newTime / 60).toFixed(1)}分経過 - セグメント区切り`);
             isManualStopRef.current = false;
             currentRecorder.stop();
           }
@@ -355,6 +408,14 @@ export default function MeetingRecorder() {
       if (recordingInterval) {
         clearInterval(recordingInterval);
         setRecordingInterval(null);
+      }
+
+      // Wake Lock解除
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release().then(() => {
+          console.log('🔓 Wake Lock 手動解除');
+          wakeLockRef.current = null;
+        });
       }
 
       // システム音声モードのクリーンアップ
@@ -886,21 +947,7 @@ export default function MeetingRecorder() {
                 </>
               )}
             </div>
-            {isTranscribing && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
-                <Loader2
-                  style={{
-                    width: 16,
-                    height: 16,
-                    animation: "spin 1s linear infinite",
-                  }}
-                />
-                <span style={{ fontSize: 14, color: "#667eea", fontWeight: 600 }}>
-                  文字起こし中...
-                </span>
-              </div>
-            )}
-            {!isTranscribing && !isRecording && (
+            {!isRecording && (
               <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8, marginBottom: 0 }}>
                 <p style={{ margin: "0 0 4px 0" }}>
                   <strong>マイク:</strong> マイクから直接録音します（自分の声のみ）
@@ -914,11 +961,18 @@ export default function MeetingRecorder() {
                 </p>
               </div>
             )}
-            {!isTranscribing && isRecording && (
-              <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8, marginBottom: 0 }}>
-                📌 3分ごとに自動で文字起こしが実行されます。長時間の会議も安心してご利用ください
-                {autoGenerateSummary && "。録音停止後、議事録を自動作成します"}
-              </p>
+            {isRecording && (
+              <>
+                <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 8, marginBottom: 0 }}>
+                  📌 2分30秒ごとに自動で文字起こしが実行されます。長時間の会議も安心してご利用ください
+                  {autoGenerateSummary && "。録音停止後、議事録を自動作成します"}
+                </p>
+                {processingSegments.size > 0 && (
+                  <p style={{ fontSize: 12, color: "#0ea5e9", marginTop: 4, marginBottom: 0, fontWeight: 500 }}>
+                    🔄 文字起こし処理中... (セグメント: {Array.from(processingSegments).join(', ')})
+                  </p>
+                )}
+              </>
             )}
           </div>
 
@@ -959,13 +1013,25 @@ export default function MeetingRecorder() {
             alignItems: "center",
             marginTop: 8,
             fontSize: 12,
-            color: transcript.length > 5000 ? "#d97706" : "var(--text-secondary)"
+            color: transcript.length > 35000 ? "#dc2626" : transcript.length > 25000 ? "#d97706" : "var(--text-secondary)"
           }}>
             <span>
-              {transcript.length}文字
-              {transcript.length > 5000 && " （2段階処理で要約→議事録化します）"}
+              {transcript.length.toLocaleString()}文字 / 35,000文字
+              {transcript.length > 35000 && " （制限を超えています）"}
             </span>
-            {transcript.length > 5000 && (
+            {transcript.length > 35000 && (
+              <span style={{
+                padding: "2px 8px",
+                background: "#fee2e2",
+                color: "#dc2626",
+                borderRadius: 4,
+                fontWeight: 600,
+                fontSize: 11
+              }}>
+                制限超過
+              </span>
+            )}
+            {transcript.length > 25000 && transcript.length <= 35000 && (
               <span style={{
                 padding: "2px 8px",
                 background: "#fef3c7",
@@ -974,7 +1040,7 @@ export default function MeetingRecorder() {
                 fontWeight: 600,
                 fontSize: 11
               }}>
-                2段階処理
+                長文処理中
               </span>
             )}
           </div>
