@@ -30,6 +30,9 @@ export default function DailyReporter() {
     products: string[];
     report: DailyReport;
   }>>([]);
+  const [userName, setUserName] = useState<string>("");
+  const [companyName, setCompanyName] = useState<string>("");
+  const [showUserSettings, setShowUserSettings] = useState<boolean>(false);
   const wakeLockRef = useRef<any>(null);
   const silentAudioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -38,9 +41,20 @@ export default function DailyReporter() {
     document.title = "営業日報くん | 営業AIポータル";
   }, []);
 
-  // ページ読み込み時に履歴を復元
+  // ページ読み込み時に履歴とユーザー情報を復元
   useEffect(() => {
     loadHistory();
+
+    // グローバル設定を優先的に使用（ホーム画面で設定したもの）
+    const globalUserName = localStorage.getItem("globalUserName");
+    const globalCompanyName = localStorage.getItem("globalCompanyName");
+
+    // フォールバック: 個別設定も確認
+    const localUserName = localStorage.getItem("dailyReportUserName");
+    const localCompanyName = localStorage.getItem("dailyReportCompanyName");
+
+    setUserName(globalUserName || localUserName || "");
+    setCompanyName(globalCompanyName || localCompanyName || "");
   }, []);
 
   // 履歴をLocalStorageから読み込み
@@ -93,6 +107,25 @@ export default function DailyReporter() {
     // 入力フィールドにも反映（オプション）
     setDestination(historyEntry.destination || "");
     setProducts(historyEntry.products?.join(", ") || "");
+  }
+
+  // ユーザー設定を保存
+  function saveUserSettings() {
+    if (!userName.trim()) {
+      alert("⚠️ 名前を入力してください");
+      return;
+    }
+
+    // グローバル設定として保存（全エージェントで共有）
+    localStorage.setItem("globalUserName", userName.trim());
+    localStorage.setItem("globalCompanyName", companyName.trim());
+
+    // 互換性のため個別設定も保存
+    localStorage.setItem("dailyReportUserName", userName.trim());
+    localStorage.setItem("dailyReportCompanyName", companyName.trim());
+
+    setShowUserSettings(false);
+    alert("✅ ユーザー設定を保存しました");
   }
 
   // transcriptが変更されたら前回の結果をクリア
@@ -293,12 +326,22 @@ export default function DailyReporter() {
   function getFullReportText(): string {
     if (!result) return "";
     const { title, visitInfo, targetProducts, visitSummary } = result;
+
+    // 参加者リストを作成（ユーザー名を自動追加）
+    let participants = [...visitInfo.participants];
+    if (userName.trim() && !participants.some(p => p.includes(userName.trim()))) {
+      const userParticipant = companyName.trim()
+        ? `${companyName.trim()} ${userName.trim()}`
+        : userName.trim();
+      participants.push(userParticipant);
+    }
+
     return `・タイトル
 ${title}
 
 ・訪問先、参加者
 訪問先: ${visitInfo.destination}
-参加者: ${visitInfo.participants.join("、")}
+参加者: ${participants.join("、")}
 
 ・商談対象製品
 ${targetProducts.join("、")}
@@ -324,13 +367,23 @@ ${visitSummary.nextSteps}`;
   function getFullReportMarkdown(): string {
     if (!result) return "";
     const { title, visitInfo, targetProducts, visitSummary } = result;
+
+    // 参加者リストを作成（ユーザー名を自動追加）
+    let participants = [...visitInfo.participants];
+    if (userName.trim() && !participants.some(p => p.includes(userName.trim()))) {
+      const userParticipant = companyName.trim()
+        ? `${companyName.trim()} ${userName.trim()}`
+        : userName.trim();
+      participants.push(userParticipant);
+    }
+
     return `# ${title}
 
 ## 訪問先
 ${visitInfo.destination}
 
 ## 参加者
-${visitInfo.participants.map(p => `- ${p}`).join('\n')}
+${participants.map(p => `- ${p}`).join('\n')}
 
 ## 商談対象製品
 ${targetProducts.map(p => `- ${p}`).join('\n')}
@@ -474,10 +527,34 @@ ${visitSummary.nextSteps}`;
           </p>
         </div>
 
-        {/* 履歴ボタン */}
-        {reportHistory.length > 0 && (
+        {/* ボタングループ：履歴・ユーザー設定 */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+          {/* 履歴ボタン */}
+          {reportHistory.length > 0 && (
+            <button
+              onClick={() => setShowHistory(true)}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 8,
+                background: "var(--card-bg)",
+                color: "var(--text-secondary)",
+                border: "1px solid var(--card-border)",
+                cursor: "pointer",
+                fontSize: 13,
+                fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <History style={{ width: 16, height: 16 }} />
+              履歴 ({reportHistory.length}件)
+            </button>
+          )}
+
+          {/* ユーザー設定ボタン */}
           <button
-            onClick={() => setShowHistory(true)}
+            onClick={() => setShowUserSettings(true)}
             style={{
               padding: "8px 16px",
               borderRadius: 8,
@@ -490,13 +567,12 @@ ${visitSummary.nextSteps}`;
               display: "flex",
               alignItems: "center",
               gap: 8,
-              marginBottom: 16,
             }}
           >
-            <History style={{ width: 16, height: 16 }} />
-            履歴 ({reportHistory.length}件)
+            <Building2 style={{ width: 16, height: 16 }} />
+            {userName ? `${userName}` : "ユーザー設定"}
           </button>
-        )}
+        </div>
 
         {!result && !loading && (
           <div
@@ -1460,6 +1536,182 @@ ${visitSummary.nextSteps}`;
                   まだ履歴がありません
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* ユーザー設定モーダル */}
+        {showUserSettings && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0, 0, 0, 0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+              padding: 16,
+            }}
+            onClick={() => setShowUserSettings(false)}
+          >
+            <div
+              style={{
+                background: "var(--card-bg)",
+                borderRadius: 12,
+                padding: 24,
+                maxWidth: 500,
+                width: "100%",
+                boxShadow: "0 10px 40px rgba(0,0,0,0.3)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 20,
+                  paddingBottom: 16,
+                  borderBottom: "2px solid var(--card-border)",
+                }}
+              >
+                <h2
+                  style={{
+                    fontSize: 20,
+                    fontWeight: 600,
+                    color: "var(--foreground)",
+                    margin: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                  }}
+                >
+                  <Building2 style={{ width: 20, height: 20 }} />
+                  ユーザー設定
+                </h2>
+                <button
+                  onClick={() => setShowUserSettings(false)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "var(--text-secondary)",
+                    padding: 4,
+                  }}
+                >
+                  <X style={{ width: 20, height: 20 }} />
+                </button>
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "var(--foreground)",
+                    marginBottom: 8,
+                  }}
+                >
+                  名前 <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  placeholder="例: 山田太郎"
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 6,
+                    border: "1px solid var(--card-border)",
+                    background: "var(--background)",
+                    color: "var(--foreground)",
+                    fontSize: 14,
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "var(--foreground)",
+                    marginBottom: 8,
+                  }}
+                >
+                  会社名（任意）
+                </label>
+                <input
+                  type="text"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  placeholder="例: BASF"
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 6,
+                    border: "1px solid var(--card-border)",
+                    background: "var(--background)",
+                    color: "var(--foreground)",
+                    fontSize: 14,
+                  }}
+                />
+              </div>
+
+              <div
+                style={{
+                  background: "#f0f9ff",
+                  border: "1px solid #bae6fd",
+                  borderRadius: 6,
+                  padding: 12,
+                  marginBottom: 20,
+                  fontSize: 12,
+                  color: "#0c4a6e",
+                  lineHeight: 1.6,
+                }}
+              >
+                💡 設定した名前は参加者に自動的に追加されます。
+              </div>
+
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button
+                  onClick={() => setShowUserSettings(false)}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 6,
+                    background: "var(--background)",
+                    color: "var(--text-secondary)",
+                    border: "1px solid var(--card-border)",
+                    cursor: "pointer",
+                    fontSize: 14,
+                    fontWeight: 500,
+                  }}
+                >
+                  キャンセル
+                </button>
+                <button
+                  onClick={saveUserSettings}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 6,
+                    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                    color: "white",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: 14,
+                    fontWeight: 600,
+                  }}
+                >
+                  保存
+                </button>
+              </div>
             </div>
           </div>
         )}
