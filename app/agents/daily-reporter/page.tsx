@@ -293,20 +293,17 @@ export default function DailyReporter() {
   function getFullReportText(): string {
     if (!result) return "";
     const { title, visitInfo, targetProducts, visitSummary } = result;
-    return `【タイトル】
+    return `・タイトル
 ${title}
 
-【訪問先】
-${visitInfo.destination}
+・訪問先、参加者
+訪問先: ${visitInfo.destination}
+参加者: ${visitInfo.participants.join("、")}
 
-【参加者】
-${visitInfo.participants.join(", ")}
+・商談対象製品
+${targetProducts.join("、")}
 
-【商談対象製品】
-${targetProducts.join(", ")}
-
-【訪問内容要約】
-
+・訪問内容要約
 ① 目的
 ${visitSummary.purpose}
 
