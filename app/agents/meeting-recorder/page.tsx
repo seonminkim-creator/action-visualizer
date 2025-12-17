@@ -291,6 +291,16 @@ export default function MeetingRecorder() {
         const videoTracks = systemStream.getVideoTracks();
         videoTracks.forEach((track: MediaStreamTrack) => track.stop());
 
+        // システム音声が含まれているか確認
+        const systemAudioTracks = systemStream.getAudioTracks();
+        if (systemAudioTracks.length === 0) {
+          console.warn('⚠️ システム音声が含まれていません。画面共有時に「システム音声を共有」を選択してください。');
+          setError('システム音声が取得できませんでした。画面共有時に「システム音声を共有」にチェックを入れてください。');
+          micStream.getTracks().forEach(track => track.stop());
+          return;
+        }
+        console.log(`✅ システム音声トラック取得: ${systemAudioTracks.length}個`);
+
         // AudioContextで2つの音声をミックス
         const audioContext = new AudioContext();
         const systemSource = audioContext.createMediaStreamSource(systemStream);
@@ -474,12 +484,14 @@ export default function MeetingRecorder() {
     }
   }
 
-  // マイクミュート切り替え関数
+  // マイクミュート切り替え関数（システム音声はそのまま、マイクのみミュート）
   function toggleMicMute(): void {
     if (micGainNode) {
       const newMutedState = !isMicMuted;
       setIsMicMuted(newMutedState);
+      // マイクのGainのみを変更（システム音声には影響しない）
       micGainNode.gain.value = newMutedState ? 0 : 1;
+      console.log(`🎤 マイク ${newMutedState ? 'ミュート' : 'オン'}（システム音声は録音継続中）`);
     }
   }
 
@@ -1012,6 +1024,11 @@ export default function MeetingRecorder() {
                   📌 2分30秒ごとに自動で文字起こしが実行されます。長時間の会議も安心してご利用ください
                   {autoGenerateSummary && "。録音停止後、議事録を自動作成します"}
                 </p>
+                {recordingMode === "system" && isMicMuted && (
+                  <p style={{ fontSize: 12, color: "#f59e0b", marginTop: 4, marginBottom: 0, fontWeight: 500 }}>
+                    🔇 マイクミュート中（システム音声のみ録音中）
+                  </p>
+                )}
                 {processingSegments.size > 0 && (
                   <p style={{ fontSize: 12, color: "#0ea5e9", marginTop: 4, marginBottom: 0, fontWeight: 500 }}>
                     🔄 文字起こし処理中... (セグメント: {Array.from(processingSegments).join(', ')})
