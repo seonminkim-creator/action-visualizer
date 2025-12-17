@@ -48,6 +48,7 @@ export default function MeetingRecorder() {
   const [activeStream, setActiveStream] = useState<MediaStream | null>(null);
   const [currentAudioChunks, setCurrentAudioChunks] = useState<Blob[]>([]);
   const [processingSegments, setProcessingSegments] = useState<Set<number>>(new Set()); // 処理中のセグメント番号
+  const [recommendedWaitMs, setRecommendedWaitMs] = useState<number>(15000); // APIからの推奨待機時間
   const isManualStopRef = useRef<boolean>(false); // ユーザーの手動停止フラグ
   const wakeLockRef = useRef<any>(null); // Wake Lock参照
   const silentAudioRef = useRef<HTMLAudioElement | null>(null); // iOS用無音オーディオ参照
@@ -116,8 +117,8 @@ export default function MeetingRecorder() {
     // 処理中セグメントに追加
     setProcessingSegments(prev => new Set(prev).add(segmentNum));
 
-    // リトライロジック（最大3回、5秒間隔）
-    const maxRetries = 3;
+    // リトライロジック（最大5回、エクスポネンシャルバックオフ）
+    const maxRetries = 5;
     let lastError: Error | null = null;
 
     try {
@@ -147,6 +148,11 @@ export default function MeetingRecorder() {
                 errorMessage = `セグメント ${segmentNum} の文字起こしエラー: ${errorData.error}${detailsMsg}`;
                 errorDetails = JSON.stringify(errorData);
               }
+              // エラー時の推奨待機時間を更新（次回リクエストに反映）
+              if (errorData.recommendedWaitMs) {
+                setRecommendedWaitMs(errorData.recommendedWaitMs);
+                console.log(`⚠️ エラー後の推奨待機時間: ${errorData.recommendedWaitMs}ms`);
+              }
             } catch (parseError) {
               console.error(`❌ セグメント ${segmentNum} エラーレスポンスのパース失敗 (試行${attempt}/${maxRetries}):`, parseError);
               errorMessage = `セグメント ${segmentNum} の文字起こしに失敗 (${response.status})`;
@@ -155,10 +161,12 @@ export default function MeetingRecorder() {
             (error as any).details = errorDetails;
             lastError = error;
 
-            // 500番台エラーの場合はリトライ
+            // 500番台エラー（特に503）の場合はリトライ
             if (response.status >= 500 && attempt < maxRetries) {
-              console.log(`⏳ セグメント ${segmentNum} をリトライ中... (${attempt}/${maxRetries}、5秒後に再試行)`);
-              await new Promise(resolve => setTimeout(resolve, 5000));
+              // エクスポネンシャルバックオフ: 10秒、20秒、40秒、60秒（最大60秒）
+              const backoffSeconds = Math.min(10 * Math.pow(2, attempt - 1), 60);
+              console.log(`⏳ セグメント ${segmentNum} をリトライ中... (${attempt}/${maxRetries}、${backoffSeconds}秒後に再試行)`);
+              await new Promise(resolve => setTimeout(resolve, backoffSeconds * 1000));
               continue;
             }
 
@@ -166,6 +174,12 @@ export default function MeetingRecorder() {
           }
 
           const data = await response.json();
+
+          // APIからの推奨待機時間を更新
+          if (data.recommendedWaitMs) {
+            setRecommendedWaitMs(data.recommendedWaitMs);
+            console.log(`⏱️ 次回推奨待機時間: ${data.recommendedWaitMs}ms`);
+          }
 
           if (!data.transcription || data.transcription.trim() === "") {
             console.warn(`⚠️ セグメント ${segmentNum} は音声が認識できませんでした`);
@@ -194,8 +208,10 @@ export default function MeetingRecorder() {
 
           // ネットワークエラーなどの場合はリトライ
           if (attempt < maxRetries) {
-            console.log(`⏳ セグメント ${segmentNum} をリトライ中... (${attempt}/${maxRetries}、5秒後に再試行)`);
-            await new Promise(resolve => setTimeout(resolve, 5000));
+            // エクスポネンシャルバックオフ
+            const backoffSeconds = Math.min(10 * Math.pow(2, attempt - 1), 60);
+            console.log(`⏳ セグメント ${segmentNum} をリトライ中... (${attempt}/${maxRetries}、${backoffSeconds}秒後に再試行)`);
+            await new Promise(resolve => setTimeout(resolve, backoffSeconds * 1000));
             continue;
           }
         }
@@ -333,7 +349,9 @@ export default function MeetingRecorder() {
               console.log(`🎬 最終セグメント ${currentSegmentNum} を文字起こし開始 (${audioBlob.size} bytes)`);
 
               if (currentSegmentNum > 1) {
-                await new Promise(resolve => setTimeout(resolve, 3000));
+                const waitMs = Math.max(recommendedWaitMs, 15000);
+                console.log(`⏱️  最終セグメント: Rate limit対策で${waitMs / 1000}秒待機`);
+                await new Promise(resolve => setTimeout(resolve, waitMs));
               }
 
               await transcribeSegment(audioBlob, currentSegmentNum);
@@ -343,11 +361,11 @@ export default function MeetingRecorder() {
             stream.getTracks().forEach((track) => track.stop());
             setActiveStream(null);
 
-            // 自動議事録作成
+            // 自動議事録作成（文字起こし完了を待つため少し長めに待機）
             if (autoGenerateSummary) {
               setTimeout(() => {
                 generateSummary();
-              }, 1000);
+              }, 3000);
             }
           } else {
             // 自動停止（セグメント区切り） - 文字起こしして再起動
@@ -358,10 +376,11 @@ export default function MeetingRecorder() {
               const audioBlob = new Blob(segmentChunks, { type: "audio/webm" });
               console.log(`🎬 セグメント ${currentSegmentNum} を文字起こし開始 (${audioBlob.size} bytes, ${(audioBlob.size / 1024 / 1024).toFixed(2)} MB)`);
 
-              // Rate limit対策
+              // Rate limit対策（APIからの推奨待機時間を使用、最低15秒）
               if (currentSegmentNum > 1) {
-                console.log(`⏱️  セグメント ${currentSegmentNum}: Rate limit対策で3秒待機`);
-                await new Promise(resolve => setTimeout(resolve, 3000));
+                const waitMs = Math.max(recommendedWaitMs, 15000);
+                console.log(`⏱️  セグメント ${currentSegmentNum}: Rate limit対策で${waitMs / 1000}秒待機`);
+                await new Promise(resolve => setTimeout(resolve, waitMs));
               }
 
               transcribeSegment(audioBlob, currentSegmentNum);

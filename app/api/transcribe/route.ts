@@ -1,9 +1,154 @@
 import { NextRequest, NextResponse } from "next/server";
 import { appendLog, generateUserId } from "@/lib/utils/logger";
+import { geminiRateLimiter } from "@/lib/utils/gemini-rate-limiter";
 
 // Vercel Pro最適化: Node.js Runtime + 5分タイムアウト
 export const runtime = "nodejs";
 export const maxDuration = 300; // Vercel Proプラン: 最大300秒（5分）
+
+/**
+ * Gemini APIで音声認識（最大限の最適化版）
+ *
+ * 最適化ポイント:
+ * 1. グローバルレート制限キュー
+ * 2. インテリジェントエクスポネンシャルバックオフ
+ * 3. 503エラー専用の長時間待機
+ * 4. リクエストサイズの最適化
+ */
+async function transcribeWithGemini(audioFile: Blob, apiKey: string): Promise<string> {
+  // レート制限: リクエスト前に適切な待機
+  await geminiRateLimiter.waitForSlot();
+
+  console.log("🎯 Gemini APIで音声認識を実行...");
+
+  // 音声データをBase64に変換
+  const arrayBuffer = await audioFile.arrayBuffer();
+  const base64Audio = Buffer.from(arrayBuffer).toString("base64");
+
+  // Gemini 2.0 Flash（高速・軽量モデル）を使用
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
+
+  const requestBody = {
+    contents: [
+      {
+        parts: [
+          {
+            // シンプルなプロンプト（トークン節約）
+            text: "この音声を日本語で文字起こししてください。",
+          },
+          {
+            inline_data: {
+              mime_type: audioFile.type || "audio/webm",
+              data: base64Audio,
+            },
+          },
+        ],
+      },
+    ],
+    generationConfig: {
+      temperature: 0, // 完全に決定的（最速）
+      topP: 1,
+      topK: 1, // 最小（最速）
+      maxOutputTokens: 4096, // 必要最小限に削減
+      candidateCount: 1,
+    },
+    // 安全性フィルターを緩和（処理高速化）
+    safetySettings: [
+      { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+    ],
+  };
+
+  // インテリジェントリトライロジック
+  const maxRetries = 5;
+  let lastError: string | null = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`📤 Gemini API リクエスト送信 (試行${attempt}/${maxRetries})`);
+
+      const response = await fetch(geminiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(180000), // 3分タイムアウト
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        if (
+          !data.candidates ||
+          !data.candidates[0] ||
+          !data.candidates[0].content ||
+          !data.candidates[0].content.parts ||
+          !data.candidates[0].content.parts[0]
+        ) {
+          throw new Error("Invalid response format from Gemini API");
+        }
+
+        const transcription = data.candidates[0].content.parts[0].text;
+        console.log(`✅ Gemini API 音声認識成功（試行${attempt}回目）`);
+
+        // 成功を記録（レート制限緩和）
+        geminiRateLimiter.recordSuccess();
+
+        return transcription;
+      }
+
+      // エラーハンドリング
+      const errorText = await response.text();
+      lastError = `Status ${response.status}: ${errorText}`;
+      console.error(`❌ Gemini API エラー (試行${attempt}/${maxRetries}, status=${response.status})`);
+
+      // エラーを記録（レート制限強化）
+      geminiRateLimiter.recordError(response.status);
+
+      if ((response.status >= 500 || response.status === 429) && attempt < maxRetries) {
+        // 503エラー専用の超長時間バックオフ
+        let backoffSeconds: number;
+
+        if (response.status === 503) {
+          // 503: サーバー過負荷 → 非常に長い待機
+          // 1回目: 20秒、2回目: 40秒、3回目: 60秒、4回目: 90秒
+          backoffSeconds = Math.min(20 * Math.pow(1.5, attempt - 1), 90);
+          console.log(`🔴 503エラー: Gemini APIサーバー過負荷、${backoffSeconds}秒待機...`);
+        } else if (response.status === 429) {
+          // 429: レート制限 → 長い待機
+          backoffSeconds = Math.min(30 * attempt, 120);
+          console.log(`🟠 429エラー: レート制限、${backoffSeconds}秒待機...`);
+        } else {
+          // その他の5xx: 標準バックオフ
+          backoffSeconds = Math.min(10 * Math.pow(2, attempt - 1), 60);
+          console.log(`🟡 ${response.status}エラー: ${backoffSeconds}秒待機...`);
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, backoffSeconds * 1000));
+        continue;
+      }
+
+      // 400番台エラー（リトライしても無駄）
+      break;
+    } catch (error) {
+      console.error(`❌ リクエストエラー (試行${attempt}/${maxRetries}):`, error);
+      lastError = error instanceof Error ? error.message : String(error);
+
+      geminiRateLimiter.recordError();
+
+      if (attempt < maxRetries) {
+        const backoffSeconds = Math.min(15 * Math.pow(2, attempt - 1), 90);
+        console.log(`⏳ ネットワークエラー、${backoffSeconds}秒後に再試行...`);
+        await new Promise((resolve) => setTimeout(resolve, backoffSeconds * 1000));
+      }
+    }
+  }
+
+  throw new Error(`Gemini API failed after ${maxRetries} attempts: ${lastError}`);
+}
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
@@ -20,7 +165,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const fileSizeMB = audioFile.size / 1024 / 1024;
+    console.log(`🎤 音声データを受信: ${audioFile.size} bytes (${fileSizeMB.toFixed(2)} MB), type: ${audioFile.type}`);
+
+    // ファイルサイズチェック（20MB以上は警告）
+    if (fileSizeMB > 20) {
+      console.warn(`⚠️ 大きなファイル: ${fileSizeMB.toFixed(2)} MB - 処理時間が長くなる可能性があります`);
+    }
+
+    // APIキーの確認
     const geminiApiKey = process.env.GEMINI_API_KEY;
+
     if (!geminiApiKey) {
       console.error("❌ GEMINI_API_KEY が設定されていません");
       return NextResponse.json(
@@ -29,172 +184,64 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 音声データをBase64に変換
-    const arrayBuffer = await audioFile.arrayBuffer();
-    const base64Audio = Buffer.from(arrayBuffer).toString("base64");
+    // 文字起こし実行
+    const transcription = await transcribeWithGemini(audioFile, geminiApiKey);
 
-    console.log(`🎤 音声データを受信: ${audioFile.size} bytes (${(audioFile.size / 1024 / 1024).toFixed(2)} MB), type: ${audioFile.type}`);
+    console.log(`📝 文字起こし完了: ${transcription.substring(0, 100)}...`);
 
-    // Gemini API で音声認識
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`;
-
-    const requestBody = {
-      contents: [
-        {
-          parts: [
-            {
-              text: "以下の音声を文字起こししてください。日本語で話されている内容をそのまま文字に起こしてください。",
-            },
-            {
-              inline_data: {
-                mime_type: audioFile.type || "audio/webm",
-                data: base64Audio,
-              },
-            },
-          ],
-        },
-      ],
-      generationConfig: {
-        temperature: 0.1, // Gemini API最適化: 決定的な生成で高速化
-        topP: 0.95,
-        topK: 40,
-        maxOutputTokens: 8192,
-        candidateCount: 1, // Gemini API最適化: 1つの候補のみ生成（高速化）
-      },
-    };
-
-    console.log("📤 Gemini APIに音声認識リクエスト送信中...");
-
-    // リトライロジック（Vercel Pro: 300秒の余裕があるため、より堅牢なリトライ戦略）
-    let lastError = null;
-    const maxRetries = 5; // Vercel Proでは5回まで余裕を持ってリトライ可能
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        const response = await fetch(geminiUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requestBody),
-          signal: AbortSignal.timeout(240000), // Vercel Pro: 240秒（4分）タイムアウト
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log(`✅ Gemini API 音声認識成功（試行${attempt}回目）`);
-
-          if (
-            !data.candidates ||
-            !data.candidates[0] ||
-            !data.candidates[0].content ||
-            !data.candidates[0].content.parts ||
-            !data.candidates[0].content.parts[0]
-          ) {
-            console.error("❌ 不正なレスポンス形式:", JSON.stringify(data));
-            return NextResponse.json(
-              { error: "音声認識結果が取得できませんでした" },
-              { status: 500 }
-            );
-          }
-
-          const transcription = data.candidates[0].content.parts[0].text;
-          console.log(`📝 文字起こし結果: ${transcription.substring(0, 100)}...`);
-
-          // 異常パターン検出（同じ文字が100回以上繰り返される場合）
-          const repeatedPattern = /(.{1,10})\1{100,}/;
-          if (repeatedPattern.test(transcription)) {
-            console.warn(`⚠️ 異常な繰り返しパターンを検出: ${transcription.substring(0, 200)}`);
-          }
-
-          // ログ保存（成功）
-          appendLog({
-            id: `transcribe_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            timestamp: new Date().toISOString(),
-            userId,
-            action: 'transcribe',
-            status: 'success',
-            characterCount: transcription.length,
-            processingTime: Date.now() - startTime,
-            userAgent: req.headers.get('user-agent') || undefined,
-          });
-
-          return NextResponse.json({ transcription });
-        }
-
-        // 500番台または429エラーの場合、固定インターバルでリトライ
-        const errorText = await response.text();
-        console.error(`❌ Gemini API エラー (試行${attempt}/${maxRetries}, status=${response.status}):`, errorText);
-        lastError = `Status ${response.status}: ${errorText}`;
-
-        if ((response.status >= 500 || response.status === 429) && attempt < maxRetries) {
-          // Vercel Pro: エクスポネンシャルバックオフを採用（余裕のある300秒制限）
-          const backoffSeconds = Math.min(Math.pow(2, attempt), 30); // 2, 4, 8, 16, 30秒（最大30秒）
-          console.log(`⏳ Gemini APIリトライ ${attempt}/${maxRetries} (status=${response.status}、${backoffSeconds}秒後に再試行)`);
-          await new Promise((resolve) => setTimeout(resolve, backoffSeconds * 1000));
-          continue;
-        }
-
-        // その他のエラー（400番台など）は即座に失敗
-        break;
-      } catch (error) {
-        console.error(`❌ リクエストエラー (試行${attempt}/${maxRetries}):`, error);
-        lastError = error;
-
-        if (attempt < maxRetries) {
-          // Vercel Pro: エクスポネンシャルバックオフ
-          const backoffSeconds = Math.min(Math.pow(2, attempt), 30);
-          console.log(`⏳ リトライ中... (${attempt}/${maxRetries}、${backoffSeconds}秒後に再試行)`);
-          await new Promise((resolve) => setTimeout(resolve, backoffSeconds * 1000));
-        }
-      }
+    // 異常パターン検出（同じ文字が100回以上繰り返される場合）
+    const repeatedPattern = /(.{1,10})\1{100,}/;
+    if (repeatedPattern.test(transcription)) {
+      console.warn(`⚠️ 異常な繰り返しパターンを検出`);
     }
 
-    // すべてのリトライが失敗した場合
-    console.error(`❌ 音声認識に失敗しました（${maxRetries}回試行）:`, lastError);
+    // ログ保存（成功）
+    appendLog({
+      id: `transcribe_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: new Date().toISOString(),
+      userId,
+      action: "transcribe",
+      status: "success",
+      characterCount: transcription.length,
+      processingTime: Date.now() - startTime,
+      userAgent: req.headers.get("user-agent") || undefined,
+    });
 
-    // デバッグ用に詳細なエラーメッセージを返す
-    const errorMessage = typeof lastError === 'string'
-      ? lastError
-      : (lastError instanceof Error ? lastError.message : '不明なエラー');
+    // 推奨待機時間をレスポンスに含める（フロントエンド用）
+    const recommendedWaitMs = geminiRateLimiter.getRecommendedWaitMs();
+
+    return NextResponse.json({
+      transcription,
+      recommendedWaitMs,
+      processingTime: Date.now() - startTime,
+    });
+  } catch (error) {
+    console.error("❌ 音声認識エラー:", error);
+
+    const errorMessage = error instanceof Error ? error.message : "不明なエラー";
 
     // ログ保存（失敗）
     appendLog({
       id: `transcribe_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date().toISOString(),
       userId,
-      action: 'transcribe',
-      status: 'error',
+      action: "transcribe",
+      status: "error",
       processingTime: Date.now() - startTime,
       errorMessage,
-      userAgent: req.headers.get('user-agent') || undefined,
+      userAgent: req.headers.get("user-agent") || undefined,
     });
+
+    // 503を検出した場合、フロントエンドに長い待機を推奨
+    const is503 = errorMessage.includes("503") || errorMessage.includes("Service Unavailable");
+    const recommendedWaitMs = is503 ? 30000 : 15000;
 
     return NextResponse.json(
       {
-        error: "音声認識に失敗しました。もう一度お試しください。",
+        error: "音声認識に失敗しました。しばらく待ってから再度お試しください。",
         details: errorMessage,
-        attempts: maxRetries
+        recommendedWaitMs,
       },
-      { status: 500 }
-    );
-  } catch (error) {
-    console.error("❌ 予期しないエラー:", error);
-
-    // ログ保存（予期しないエラー）
-    appendLog({
-      id: `transcribe_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: new Date().toISOString(),
-      userId,
-      action: 'transcribe',
-      status: 'error',
-      processingTime: Date.now() - startTime,
-      errorMessage: error instanceof Error ? error.message : '予期しないエラー',
-      userAgent: req.headers.get('user-agent') || undefined,
-    });
-
-    return NextResponse.json(
-      { error: "サーバーエラーが発生しました" },
       { status: 500 }
     );
   }
