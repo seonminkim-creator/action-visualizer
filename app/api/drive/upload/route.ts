@@ -4,6 +4,7 @@ import {
   getOrCreateRootFolder,
   getOrCreateMeetingFolder,
   uploadFile,
+  createOAuth2Client,
 } from "@/lib/utils/google-drive";
 import {
   Document,
@@ -263,14 +264,37 @@ async function generateWordDocument(
 export async function POST(req: NextRequest) {
   try {
     // トークンを取得
-    const accessToken = req.cookies.get("google_drive_access_token")?.value;
+    let accessToken = req.cookies.get("google_drive_access_token")?.value;
     const refreshToken = req.cookies.get("google_drive_refresh_token")?.value;
+    let newAccessToken: string | undefined;
 
-    if (!accessToken) {
+    if (!accessToken && !refreshToken) {
       return NextResponse.json(
         { error: "Google Driveに接続されていません", needsAuth: true },
         { status: 401 }
       );
+    }
+
+    // アクセストークンがない（期限切れ）が、リフレッシュトークンがある場合 → 更新を試みる
+    if (!accessToken && refreshToken) {
+      try {
+        console.log("🔄 アクセストークン期限切れのため、リフレッシュを試みます...");
+        const oauth2Client = createOAuth2Client("", refreshToken);
+        const { credentials } = await oauth2Client.refreshAccessToken();
+        if (credentials.access_token) {
+          accessToken = credentials.access_token;
+          newAccessToken = credentials.access_token;
+          console.log("✅ アクセストークンを更新しました");
+        } else {
+          throw new Error("更新されたアクセストークンが取得できませんでした");
+        }
+      } catch (refreshError) {
+        console.error("トークンリフレッシュ失敗:", refreshError);
+        return NextResponse.json(
+          { error: "認証の更新に失敗しました。再接続してください。", needsAuth: true },
+          { status: 401 }
+        );
+      }
     }
 
     const formData = await req.formData();
@@ -290,7 +314,7 @@ export async function POST(req: NextRequest) {
     console.log(`📤 Google Driveアップロード開始: ${title}`);
 
     // Driveクライアント作成
-    const drive = getDriveClient(accessToken, refreshToken);
+    const drive = getDriveClient(accessToken!, refreshToken);
 
     // ルートフォルダを取得/作成
     const rootFolderId = await getOrCreateRootFolder(drive);
@@ -391,12 +415,24 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ Google Drive${isNew ? "新規保存" : "更新"}完了: ${title}`);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       isNew,
       success: true,
       folderId: meetingFolderId,
       files: uploadedFiles,
     });
+
+    // 新しいアクセストークンがある場合、クッキーを更新
+    if (newAccessToken) {
+      response.cookies.set("google_drive_access_token", newAccessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 60 * 60, // 1時間
+        path: "/",
+      });
+    }
+
+    return response;
   } catch (error) {
     console.error("Google Driveアップロードエラー:", error);
 

@@ -6,6 +6,7 @@ export const runtime = "nodejs";
 export const maxDuration = 300; // Vercel Proプラン: 最大300秒（5分）- 長い議事録生成に対応
 
 type MeetingSummary = {
+  title: string; // 会議タイトル（自動生成）
   summary: {
     purpose: string;
     discussions: string[];
@@ -45,7 +46,7 @@ ${transcript}
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -124,22 +125,31 @@ export async function POST(req: NextRequest) {
 
     const SYSTEM_PROMPT = `あなたは会議の議事録を作成する専門AIアシスタントです。
 
+【概要】
+提供される文字起こしには [話者A], [話者B] などの話者ラベルが含まれている場合があります。
+発言内容から、誰がどのような意見を述べ、最終的に誰が決定を下し、誰がTODOの担当になったかを正確に特定して整理してください。
+
 【タスク】
 会議の内容から以下の情報を抽出してJSON形式で返してください：
 
+0. title（会議タイトル）
+   - 会議の内容を端的に表す短いタイトル（15文字以内）
+   - 例: "BASF定例会議", "営業代行進捗報告", "新製品企画MTG"
+
 1. summary（会議サマリー）
    - purpose: 会議の目的（1-2文）
-   - discussions: 主な議論内容（3-5項目の配列）
-   - decisions: 決定事項（1-5項目の配列）
+   - discussions: 主な議論内容（3-5項目の配列。誰が何を提案したかを含めるのが理想）
+   - decisions: 決定事項（1-5項目の配列。決定者や経緯も含める）
 
 2. todos（TODOリスト）
    - task: タスク内容
-   - assignee: 担当者名（言及があれば。なければ"未定"）
+   - assignee: 担当者名（文字起こし内の名前や [話者A] などのラベルを元に特定）
    - deadline: 期限（言及があれば。なければ省略）
    - priority: 優先度（"high", "medium", "low"のいずれか）
 
 3. detailedMinutes（詳細議事録）
    - 会議の流れを時系列で整理した詳細な議事録（Markdown形式）
+   - 発言者を明記し、議論の対立点や合意点も記述してください。
 
 【優先度の判定基準】
 - high: 今日〜明日中に着手すべき、緊急性の高いタスク
@@ -148,15 +158,11 @@ export async function POST(req: NextRequest) {
 
 【ルール】
 - JSON形式で返すこと
+- titleは会議の主題を端的に表現（会社名・プロジェクト名+会議種別が理想）
 - discussions と decisions は箇条書き形式で簡潔に（必ず「・」で始める）
 - todos は具体的な行動項目のみ抽出
-- detailedMinutes は発言の流れを整理して記述（見出しに「■」を使用）
+- detailedMinutes はMarkdown形式で記述し、階層構造（##, ###, -）を活用して読みやすく整理すること。単なる文章の羅列は不可。
 - 担当者名が不明な場合は"未定"とする
-
-【フォーマット例】
-discussions: ["・新製品のローンチ日程について協議", "・マーケティング予算の見直しを検討"]
-decisions: ["・ローンチ日を2024年3月15日に決定", "・予算を20%増額することで合意"]
-detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容\n・新製品について..."
 
 必ずJSON形式で返してください。`;
 
@@ -168,7 +174,7 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
           {
             method: "POST",
             headers: {
@@ -194,6 +200,9 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
                 responseSchema: {
                   type: "object",
                   properties: {
+                    title: {
+                      type: "string"
+                    },
                     summary: {
                       type: "object",
                       properties: {
@@ -241,7 +250,7 @@ detailedMinutes: "■ 会議概要\n本日の会議では...\n\n■ 議論内容
                       type: "string"
                     }
                   },
-                  required: ["summary", "todos", "detailedMinutes"]
+                  required: ["title", "summary", "todos", "detailedMinutes"]
                 }
               },
             }),

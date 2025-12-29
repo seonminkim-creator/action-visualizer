@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { CheckSquare, Calendar, Mail, MessageSquare, Sprout, Settings, User, FileText } from "lucide-react";
+import { CheckSquare, Calendar, Mail, MessageSquare, Sprout, Settings, User, FileText, Shield } from "lucide-react";
 import { useState, useEffect } from "react";
 
 type Agent = {
@@ -16,13 +16,23 @@ type Agent = {
 
 const agents: Agent[] = [
   {
+    id: "boujo-alert",
+    title: "防除情報確認くん",
+    description: "地域の病害虫予察と推奨製品",
+    icon: <Shield size={32} />,
+    path: "/agents/boujo-alert",
+    gradient: "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)",
+    status: "active",
+    badge: "New!"
+  },
+  {
     id: "calendar-finder",
     title: "空き時間検索くん",
     description: "空き時間をすぐ可視化",
     icon: <Calendar size={32} />,
     path: "/agents/calendar-finder",
     gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-    status: "coming-soon"
+    status: "active"
   },
   {
     id: "agri-talk",

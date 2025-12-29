@@ -1,7 +1,13 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import React, { useEffect, useState, useRef } from "react";
+import { 
+  Loader2, History, Search, X, Check, Trash2, 
+  MessageSquare, ChevronRight, ListTodo, FileText, 
+  ArrowLeft, BrainCircuit, Play, Lock
+} from "lucide-react";
 import BackToHome from "../../components/BackToHome";
+
+// --- Types & Logic ---
 
 type AnalyzeResult = {
   summary: string;
@@ -54,34 +60,76 @@ function mockAnalyze(text: string, userName: string): AnalyzeResult {
   };
 }
 
+// --- UI Components ---
+
+const SectionHeader = ({ icon, title, count }: { icon: React.ReactNode; title: string; count?: number }) => (
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottom: "1px solid var(--card-border)",
+  }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      {icon}
+      <span style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>{title}</span>
+    </div>
+    {count !== undefined && (
+      <span style={{ fontSize: 12, color: "var(--text-secondary)", background: "var(--background)", padding: "2px 8px", borderRadius: 10 }}>
+        {count}件
+      </span>
+    )}
+  </div>
+);
+
 export default function ActionVisualizer() {
+  // State
   const [input, setInput] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzeResult | null>(null);
-  const [historyOpen, setHistoryOpen] = useState<boolean>(true);
-  const [showAllTasks, setShowAllTasks] = useState<boolean>(false);
   const [userName, setUserName] = useState<string>("");
   const [history, setHistory] = useState<Array<{ id: string; at: number; input: string; result: AnalyzeResult }>>([]);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [password, setPassword] = useState<string>("");
   const [passwordError, setPasswordError] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [isMobile, setIsMobile] = useState<boolean>(true);
+  const [activeTab, setActiveTab] = useState<"history" | "input" | "preview">("input");
+  const [showAllTasks, setShowAllTasks] = useState<boolean>(false);
 
+  // Effects
   useEffect(() => {
     try {
-      const authenticated = sessionStorage.getItem("taskvisualizer_auth");
-      if (authenticated === "true") {
-        setIsAuthenticated(true);
-      }
-
+      if (sessionStorage.getItem("taskvisualizer_auth") === "true") setIsAuthenticated(true);
       const raw = localStorage.getItem("actionviz_history_v1");
       if (raw) setHistory(JSON.parse(raw));
-
-      const savedUserName = localStorage.getItem("actionviz_username");
-      if (savedUserName) setUserName(savedUserName);
+      const saved = localStorage.getItem("actionviz_username");
+      if (saved) setUserName(saved);
     } catch {}
   }, []);
 
+  useEffect(() => {
+    localStorage.setItem("actionviz_history_v1", JSON.stringify(history.slice(0, 50)));
+  }, [history]);
+
+  useEffect(() => {
+    if (userName) localStorage.setItem("actionviz_username", userName);
+  }, [userName]);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  useEffect(() => {
+    if (result && isMobile) setActiveTab("preview");
+  }, [result, isMobile]);
+
+  // Handlers
   function handlePasswordSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (password === "1234") {
@@ -93,20 +141,6 @@ export default function ActionVisualizer() {
     }
   }
 
-  useEffect(() => {
-    try {
-      localStorage.setItem("actionviz_history_v1", JSON.stringify(history.slice(0, 50)));
-    } catch {}
-  }, [history]);
-
-  useEffect(() => {
-    try {
-      if (userName) {
-        localStorage.setItem("actionviz_username", userName);
-      }
-    } catch {}
-  }, [userName]);
-
   async function analyze(): Promise<void> {
     const text = input.trim();
     if (!text) return;
@@ -114,16 +148,17 @@ export default function ActionVisualizer() {
     setError(null);
     setResult(null);
     setShowAllTasks(false);
-    const api = await callAnalyzeAPI(text, userName);
-    if (api) {
-      setResult(api);
-      setHistory((h) => [{ id: crypto.randomUUID(), at: Date.now(), input: text, result: api }, ...h].slice(0, 50));
-    } else {
-      const mock = mockAnalyze(text, userName);
-      setResult(mock);
+    
+    // Simulate slight delay for effect if mock, or await real API
+    let api = await callAnalyzeAPI(text, userName);
+    
+    if (!api) {
+      api = mockAnalyze(text, userName);
       setError("APIエラー。プレビュー用の暫定結果を表示しています。");
-      setHistory((h) => [{ id: crypto.randomUUID(), at: Date.now(), input: text, result: mock }, ...h].slice(0, 50));
     }
+
+    setResult(api);
+    setHistory((h) => [{ id: crypto.randomUUID(), at: Date.now(), input: text, result: api! }, ...h].slice(0, 50));
     setLoading(false);
   }
 
@@ -131,65 +166,314 @@ export default function ActionVisualizer() {
     setHistory((h) => h.filter(item => item.id !== id));
   }
 
-  // パスワード認証画面
+  const filteredHistory = history.filter(h => 
+    !searchQuery || h.input.toLowerCase().includes(searchQuery.toLowerCase()) || h.result.summary.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Sub-components
+  const Sidebar = () => (
+    <div style={{
+      width: isMobile ? "100%" : 280,
+      flexShrink: 0,
+      background: "var(--card-bg)",
+      borderRadius: 12,
+      padding: 16,
+      display: "flex",
+      flexDirection: "column",
+      maxHeight: isMobile ? "none" : "calc(100vh - 120px)",
+      boxSizing: "border-box"
+    }}>
+      <SectionHeader 
+        icon={<History style={{ width: 16, height: 16, color: "#667eea" }} />} 
+        title="履歴" 
+        count={filteredHistory.length} 
+      />
+      
+      <div style={{ position: "relative", marginBottom: 12 }}>
+        <Search style={{
+          width: 14, height: 14, position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-tertiary)"
+        }} />
+        <input
+          type="text"
+          placeholder="履歴を検索..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{
+            width: "100%", padding: "8px 8px 8px 32px", borderRadius: 6,
+            border: "1px solid var(--card-border)", background: "var(--background)",
+            color: "var(--foreground)", fontSize: 13, boxSizing: "border-box"
+          }}
+        />
+      </div>
+
+      <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+        {filteredHistory.length === 0 ? (
+          <p style={{ fontSize: 12, color: "var(--text-secondary)", textAlign: "center", padding: 8 }}>履歴がありません</p>
+        ) : (
+          filteredHistory.map((h) => (
+            <div
+              key={h.id}
+              onClick={() => {
+                setInput(h.input);
+                setResult(h.result);
+                if (isMobile) setActiveTab("preview");
+              }}
+              style={{
+                padding: "10px", borderRadius: 8,
+                background: "var(--background)", border: "1px solid var(--card-border)",
+                cursor: "pointer", transition: "all 0.2s"
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>
+                  {new Date(h.at).toLocaleString("ja-JP")}
+                </span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); if(confirm("削除しますか？")) deleteHistoryItem(h.id); }}
+                  style={{ color: "var(--text-tertiary)", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                >
+                  <X size={12} />
+                </button>
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", marginBottom: 4 }}>
+                {h.result.summary.slice(0, 20)}...
+              </div>
+              <div style={{ fontSize: 11, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {h.input.slice(0, 50)}...
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+
+  const MainContent = () => (
+    <div style={{
+      flex: 1, minWidth: 0, display: "flex", flexDirection: "column",
+      maxHeight: isMobile ? "none" : "calc(100vh - 120px)", overflowY: "auto", boxSizing: "border-box"
+    }}>
+      <div style={{ background: "var(--card-bg)", borderRadius: 12, padding: 16, marginBottom: 16 }}>
+        <SectionHeader 
+          icon={<FileText style={{ width: 16, height: 16, color: "#667eea" }} />} 
+          title="テキスト入力" 
+        />
+        
+        <div style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+          <label style={{ fontSize: 12, color: "var(--text-secondary)" }}>担当者名:</label>
+          <input
+            type="text"
+            value={userName}
+            onChange={(e) => setUserName(e.target.value)}
+            placeholder="あなた"
+            style={{
+              padding: "6px 10px", borderRadius: 6, border: "1px solid var(--card-border)",
+              fontSize: 12, width: 100, background: "var(--background)", color: "var(--foreground)"
+            }}
+          />
+        </div>
+
+        <textarea
+          placeholder="ここにメールや議事録を貼り付けてください..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          style={{
+            width: "100%", minHeight: 200, padding: 12, borderRadius: 8,
+            border: "1px solid var(--card-border)", fontSize: 14,
+            background: "var(--background)", color: "var(--foreground)",
+            marginBottom: 16, boxSizing: "border-box", resize: "vertical"
+          }}
+        />
+
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={analyze}
+            disabled={loading || !input.trim()}
+            style={{
+              flex: 1, padding: "12px", borderRadius: 8,
+              background: loading || !input.trim() ? "var(--text-tertiary)" : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              color: "white", border: "none", cursor: loading || !input.trim() ? "not-allowed" : "pointer",
+              fontWeight: 600, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8
+            }}
+          >
+            {loading ? <Loader2 className="animate-spin" size={16} /> : <BrainCircuit size={16} />}
+            タスクを整理する
+          </button>
+          <button
+            onClick={() => setInput("")}
+            style={{
+              padding: "12px", borderRadius: 8, background: "var(--background)",
+              color: "var(--text-secondary)", border: "1px solid var(--card-border)",
+              cursor: "pointer", fontWeight: 600, fontSize: 14
+            }}
+          >
+            クリア
+          </button>
+        </div>
+      </div>
+      
+      {!isMobile && (
+        <div style={{ background: "var(--card-bg)", borderRadius: 12, padding: 16 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", marginBottom: 8 }}>使い方</h3>
+          <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6 }}>
+            文章を入力して「タスクを整理する」を押すと、AIが内容を分析し、
+            <strong>要約・依頼内容・TODOリスト</strong>を自動生成します。
+          </p>
+        </div>
+      )}
+    </div>
+  );
+
+  const ResultPanel = () => {
+    if (!result) return (
+      <div style={{ 
+        flex: 1, background: "var(--card-bg)", borderRadius: 12, padding: 16,
+        display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-tertiary)",
+        minHeight: 200
+      }}>
+        <div style={{ textAlign: "center" }}>
+          <ListTodo size={48} style={{ opacity: 0.2, marginBottom: 16 }} />
+          <p style={{ fontSize: 13 }}>ここに分析結果が表示されます</p>
+        </div>
+      </div>
+    );
+
+    return (
+      <div style={{
+        flex: 1,
+        minWidth: 0, 
+        display: "flex", 
+        flexDirection: "column",
+        maxHeight: isMobile ? "none" : "calc(100vh - 120px)",
+        overflowY: "auto"
+      }}>
+        {error && (
+          <div style={{ padding: 12, background: "#fee2e2", color: "#dc2626", borderRadius: 8, marginBottom: 16, fontSize: 13 }}>
+            {error}
+          </div>
+        )}
+
+        <div style={{ background: "var(--card-bg)", borderRadius: 12, padding: 16, marginBottom: 16 }}>
+          <SectionHeader 
+            icon={<MessageSquare style={{ width: 16, height: 16, color: "#10b981" }} />} 
+            title="要約" 
+          />
+          <p style={{ fontSize: 14, lineHeight: 1.6, color: "var(--foreground)" }}>
+            {result.summary}
+          </p>
+        </div>
+
+        <div style={{ background: "var(--card-bg)", borderRadius: 12, padding: 16, marginBottom: 16 }}>
+          <SectionHeader 
+            icon={<ListTodo style={{ width: 16, height: 16, color: "#f59e0b" }} />} 
+            title="TODOリスト" 
+            count={result.inferred_actions.length}
+          />
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {result.inferred_actions
+              .sort((a, b) => {
+                const p = { high: 0, medium: 1, low: 2 };
+                return p[a.priority] - p[b.priority];
+              })
+              .filter(item => showAllTasks || item.priority === "high" || result.inferred_actions.length <= 3)
+              .map((item, i) => {
+                const priorityColors = {
+                  high: { bg: "#fef2f2", border: "#fca5a5", text: "#dc2626", label: "高" },
+                  medium: { bg: "#fef3c7", border: "#fcd34d", text: "#d97706", label: "中" },
+                  low: { bg: "#f0f9ff", border: "#93c5fd", text: "#2563eb", label: "低" }
+                };
+                const p = priorityColors[item.priority];
+                const isMe = item.assignee === userName || item.assignee === "あなた";
+                return (
+                  <div key={i} style={{ 
+                    padding: 8, borderRadius: 8, border: "1px solid var(--card-border)",
+                    background: isMe ? "#f0fdf4" : "var(--background)",
+                    display: "flex", gap: 8, alignItems: "flex-start"
+                  }}>
+                    <span style={{ 
+                      fontSize: 10, padding: "2px 6px", borderRadius: 4, 
+                      background: p.bg, color: p.text, border: `1px solid ${p.border}`,
+                      fontWeight: 600, flexShrink: 0
+                    }}>{p.label}</span>
+                    <span style={{ 
+                      fontSize: 10, padding: "2px 6px", borderRadius: 4, 
+                      background: "var(--card-bg)", color: "var(--text-secondary)", border: "1px solid var(--card-border)",
+                      fontWeight: 500, flexShrink: 0
+                    }}>{item.assignee}</span>
+                    <span style={{ fontSize: 13, color: "var(--foreground)", flex: 1 }}>{item.text}</span>
+                  </div>
+                )
+              })}
+              
+            {result.inferred_actions.length > 3 && !showAllTasks && (
+               <button 
+                 onClick={() => setShowAllTasks(true)}
+                 style={{ width: "100%", padding: 8, fontSize: 12, color: "var(--text-secondary)", background: "transparent", border: "1px dashed var(--card-border)", borderRadius: 6, cursor: "pointer" }}
+               >
+                 すべてのタスクを表示 ({result.inferred_actions.length}件)
+               </button>
+            )}
+          </div>
+        </div>
+
+        <div style={{ background: "var(--card-bg)", borderRadius: 12, padding: 16 }}>
+          <SectionHeader 
+            icon={<FileText style={{ width: 16, height: 16, color: "#3b82f6" }} />} 
+            title="依頼内容詳細" 
+          />
+          <ul style={{ paddingLeft: 20, margin: 0, marginBottom: 16 }}>
+            {result.explicit_points.map((pt, i) => (
+              <li key={i} style={{ fontSize: 13, color: "var(--foreground)", marginBottom: 4 }}>{pt}</li>
+            ))}
+          </ul>
+          <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6, borderTop: "1px solid var(--card-border)", paddingTop: 12 }}>
+            {result.detailed_analysis}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Auth Screen
   if (!isAuthenticated) {
     return (
-      <div style={{ minHeight: "100vh", padding: "16px", background: "var(--background)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ margin: "0 auto", maxWidth: 400, width: "100%" }}>
-          <div style={{ marginBottom: 16 }}>
-            <BackToHome />
-          </div>
-          <div style={{ background: "var(--card-bg)", borderRadius: 12, padding: 32, boxShadow: "0 4px 6px rgba(0,0,0,0.1)" }}>
-            <h1 style={{
-              fontSize: 24,
-              fontWeight: 600,
-              margin: "0 0 8px 0",
-              color: "var(--foreground)",
-              textAlign: "center"
-            }}>
-              🔒 タスク整理くん
-            </h1>
-            <p style={{ fontSize: 14, color: "var(--text-secondary)", textAlign: "center", marginBottom: 24 }}>
-              このページはパスワード保護されています
-            </p>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--background)" }}>
+        <div style={{ width: "100%", maxWidth: 400, padding: 20 }}>
+          <BackToHome />
+          <div style={{ marginTop: 20, background: "var(--card-bg)", padding: 32, borderRadius: 16, boxShadow: "0 4px 20px var(--shadow)", border: "1px solid var(--card-border)" }}>
+            <div style={{ textAlign: "center", marginBottom: 24 }}>
+              <div style={{ 
+                width: 48, height: 48, borderRadius: 12, 
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                margin: "0 auto 16px", display: "flex", alignItems: "center", justifyContent: "center", color: "white"
+              }}>
+                <Lock size={24} />
+              </div>
+              <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 8px", color: "var(--foreground)" }}>タスク整理くん</h1>
+              <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>パスワードを入力してください</p>
+            </div>
             <form onSubmit={handlePasswordSubmit}>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="パスワードを入力"
+                placeholder="パスワード"
                 style={{
-                  width: "100%",
-                  padding: 12,
-                  borderRadius: 8,
-                  border: "1px solid var(--card-border)",
-                  fontSize: 14,
-                  marginBottom: 12,
-                  boxSizing: "border-box",
-                  background: "var(--background)",
-                  color: "var(--foreground)"
+                  width: "100%", padding: "12px", borderRadius: 8,
+                  border: "1px solid var(--card-border)", marginBottom: 16,
+                  background: "var(--background)", color: "var(--foreground)", boxSizing: "border-box"
                 }}
               />
-              {passwordError && (
-                <div style={{ color: "#dc2626", fontSize: 13, marginBottom: 12, padding: 8, background: "#fee2e2", borderRadius: 6 }}>
-                  {passwordError}
-                </div>
-              )}
+              {passwordError && <div style={{ color: "#dc2626", fontSize: 12, marginBottom: 12 }}>{passwordError}</div>}
               <button
                 type="submit"
                 style={{
-                  width: "100%",
-                  padding: 12,
-                  borderRadius: 8,
+                  width: "100%", padding: "12px", borderRadius: 8,
                   background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                  color: "white",
-                  border: "none",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                  fontSize: 14
+                  color: "white", border: "none", fontWeight: 600, cursor: "pointer"
                 }}
               >
-                ログイン
+                ロック解除
               </button>
             </form>
           </div>
@@ -198,360 +482,80 @@ export default function ActionVisualizer() {
     );
   }
 
-  return (
-    <div style={{ minHeight: "100vh", padding: "16px", background: "var(--background)" }}>
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        @media (min-width: 768px) {
-          .container { padding: 32px; }
-        }
-        input::placeholder, textarea::placeholder {
-          color: var(--text-tertiary);
-          opacity: 1;
-        }
-      `}</style>
-      <div style={{ margin: "0 auto", maxWidth: 960 }}>
-        <div style={{ marginBottom: 16 }}>
+  // Common Header
+  const Header = () => (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+      <BackToHome />
+      <div style={{ 
+        width: 40, height: 40, borderRadius: 10, 
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        display: "flex", alignItems: "center", justifyContent: "center", color: "white", flexShrink: 0
+      }}>
+        <ListTodo size={20} />
+      </div>
+      <div>
+        <h1 style={{ fontSize: 20, fontWeight: 600, margin: 0, color: "var(--foreground)" }}>タスク整理くん</h1>
+        <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0 }}>文章からTODOを自動抽出</p>
+      </div>
+    </div>
+  );
+
+  // Mobile Layout
+  if (isMobile) {
+    return (
+      <div style={{ minHeight: "100vh", background: "var(--background)", paddingBottom: 80 }}>
+        <div style={{ 
+          padding: "12px 16px", background: "var(--card-bg)", 
+          borderBottom: "1px solid var(--card-border)", position: "sticky", top: 0, zIndex: 10,
+          display: "flex", alignItems: "center", gap: 12
+        }}>
           <BackToHome />
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-            <h1 style={{
-              fontSize: "clamp(14px, 4vw, 24px)",
-              fontWeight: 600,
-              margin: 0,
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              color: "white",
-              padding: "6px 12px",
-              borderRadius: 6,
-              display: "inline-block"
-            }}>
-              タスク整理くん 👀
-            </h1>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
-              <label style={{ fontSize: 12, color: "var(--text-secondary)", whiteSpace: "nowrap" }}>名前:</label>
-              <input
-                type="text"
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-                placeholder="例: 田中"
-                style={{
-                  padding: "6px 10px",
-                  borderRadius: 6,
-                  border: "1px solid var(--card-border)",
-                  fontSize: 12,
-                  width: "100px",
-                  maxWidth: "120px",
-                  background: "var(--background)",
-                  color: "var(--foreground)"
-                }}
-              />
-            </div>
-          </div>
-          <p style={{ color: "var(--text-secondary)", fontSize: 13, margin: 0 }}>
-            {loading ? "タスクを整理中です…" : "文章を貼り付けて、今やるべきことを見える化"}
-          </p>
+          <h1 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: "var(--foreground)" }}>タスク整理くん</h1>
         </div>
 
-        {/* 使い方説明 */}
-        {!result && !loading && (
-          <div style={{
-            background: "var(--card-bg)",
-            borderRadius: 8,
-            padding: "12px 16px",
-            marginBottom: 12,
-            border: "1px solid var(--card-border)"
-          }}>
-            <div
-              style={{
-                fontSize: 13,
-                color: "var(--foreground)",
-                lineHeight: 1.8,
-                fontWeight: 600,
-                marginBottom: 8,
-              }}
-            >
-              📝 使い方
-            </div>
-            <div
-              style={{
-                fontSize: 12,
-                color: "var(--text-secondary)",
-                lineHeight: 1.8,
-                paddingLeft: 8,
-              }}
-            >
-              メールや会議内容を貼り付け → 「タスクを整理」 → <strong>優先度・担当者・期日付きのタスクリストを出力</strong>
-            </div>
-          </div>
-        )}
-
-        <div style={{ display: "grid", gap: 12 }}>
-          <textarea
-            placeholder="ここに文章を貼り付け（メール、議事録など）"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            style={{
-              minHeight: 150,
-              padding: 12,
-              borderRadius: 8,
-              border: "1px solid var(--card-border)",
-              fontSize: 14,
-              width: "100%",
-              boxSizing: "border-box",
-              background: "var(--background)",
-              color: "var(--foreground)"
-            }}
-          />
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <button
-              onClick={analyze}
-              disabled={loading || !input.trim()}
-              style={{
-                padding: "10px 14px",
-                borderRadius: 8,
-                background: loading || !input.trim() ? "var(--text-tertiary)" : "var(--foreground)",
-                color: "white",
-                border: "none",
-                cursor: loading || !input.trim() ? "not-allowed" : "pointer",
-                fontWeight: 500,
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                fontSize: 14
-              }}
-            >
-              {loading && <Loader2 style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }} />}
-              みえーる化
-            </button>
-            <button
-              onClick={() => setInput("")}
-              disabled={loading}
-              style={{
-                fontSize: 13,
-                color: "var(--text-secondary)",
-                background: "transparent",
-                border: "none",
-                cursor: loading ? "not-allowed" : "pointer",
-                padding: "6px 10px"
-              }}
-            >
-              クリア
-            </button>
-            <button
-              onClick={() => setHistoryOpen((v) => !v)}
-              style={{
-                marginLeft: "auto",
-                fontSize: 13,
-                color: "var(--foreground)",
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                padding: "6px 10px",
-                whiteSpace: "nowrap"
-              }}
-            >
-              履歴 {historyOpen ? "✕" : "▼"}
-            </button>
-            {history.length > 0 && (
-              <button
-                onClick={() => {
-                  if (confirm("過去の履歴を全て削除しますか？")) {
-                    setHistory([]);
-                    localStorage.removeItem("actionviz_history_v1");
-                  }
-                }}
-                style={{
-                  fontSize: 13,
-                  color: "#dc2626",
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: "6px 10px"
-                }}
-              >
-                削除
-              </button>
-            )}
-          </div>
+        <div style={{ padding: 16 }}>
+          <div style={{ display: activeTab === "history" ? "block" : "none" }}><Sidebar /></div>
+          <div style={{ display: activeTab === "input" ? "block" : "none" }}><MainContent /></div>
+          <div style={{ display: activeTab === "preview" ? "block" : "none" }}><ResultPanel /></div>
         </div>
 
-        {typeof error === "string" && error && (
-          <div style={{ color: "#dc2626", fontSize: 14, marginTop: 12, padding: 12, background: "#fee", borderRadius: 8 }}>{error}</div>
-        )}
+        <div style={{
+          position: "fixed", bottom: 0, left: 0, right: 0,
+          background: "var(--card-bg)", borderTop: "1px solid var(--card-border)",
+          display: "flex", justifyContent: "space-around", padding: "12px 0", zIndex: 50,
+          paddingBottom: "max(12px, env(safe-area-inset-bottom))"
+        }}>
+          {[
+            { id: "history", icon: History, label: "履歴" },
+            { id: "input", icon: Play, label: "入力" }, // Using Play as simple action icon
+            { id: "preview", icon: Check, label: "結果" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              style={{
+                background: "transparent", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                color: activeTab === tab.id ? "#667eea" : "var(--text-tertiary)",
+                fontSize: 10, fontWeight: 600, cursor: "pointer", width: "33%"
+              }}
+            >
+              <tab.icon size={20} />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
-        {isAnalyzeResult(result) && !loading && (
-          <>
-            <div style={{ background: "var(--card-bg)", borderRadius: 8, padding: "16px", marginTop: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-              <div style={{ fontSize: 13, marginBottom: 12, paddingBottom: 12, borderBottom: "1px solid var(--card-border)", wordBreak: "break-word" }}>
-                <span style={{ fontWeight: 600, color: "var(--foreground)" }}>要約：</span>
-                <span style={{ color: "var(--foreground)" }}>{result.summary}</span>
-              </div>
-              <div style={{ display: "grid", gap: 16 }}>
-                <section>
-                  <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 10, color: "var(--foreground)" }}>📋 依頼内容</h2>
-                  <ul style={{ paddingLeft: 20, margin: 0 }}>
-                    {result.explicit_points.map((s, i) => (
-                      <li key={i} style={{ marginBottom: 8, fontSize: 13, color: "var(--foreground)", wordBreak: "break-word" }}>
-                        {String(s)}
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-                <section>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 8, flexWrap: "wrap" }}>
-                    <h2 style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>🎯 対応タスク</h2>
-                    {result.inferred_actions.filter(item => item.priority !== "high").length > 0 && (
-                      <button
-                        onClick={() => setShowAllTasks(!showAllTasks)}
-                        style={{
-                          fontSize: 11,
-                          color: "var(--text-secondary)",
-                          background: "transparent",
-                          border: "none",
-                          cursor: "pointer",
-                          padding: "4px 6px",
-                          whiteSpace: "nowrap"
-                        }}
-                      >
-                        {showAllTasks ? "中・低 ▲" : `他 ${result.inferred_actions.filter(item => item.priority !== "high").length}件 ▼`}
-                      </button>
-                    )}
-                  </div>
-                  <ul style={{ paddingLeft: 0, margin: 0, listStyle: "none" }}>
-                    {result.inferred_actions
-                      .sort((a, b) => {
-                        const priorityOrder = { high: 0, medium: 1, low: 2 };
-                        return priorityOrder[a.priority] - priorityOrder[b.priority];
-                      })
-                      .filter(item => showAllTasks || item.priority === "high")
-                      .map((item, i) => {
-                        const priorityColors = {
-                          high: { bg: "#fef2f2", border: "#fca5a5", text: "#dc2626", label: "高" },
-                          medium: { bg: "#fef3c7", border: "#fcd34d", text: "#d97706", label: "中" },
-                          low: { bg: "#f0f9ff", border: "#93c5fd", text: "#2563eb", label: "低" }
-                        };
-                        const priority = priorityColors[item.priority];
-                        const isMyTask = item.assignee === userName || item.assignee === "あなた";
-                        const assigneeColor = isMyTask ? "#10b981" : "var(--text-secondary)";
-                        return (
-                          <li key={i} style={{ marginBottom: 10, fontSize: 13, color: "var(--foreground)", display: "flex", alignItems: "flex-start", gap: 6, flexWrap: "wrap" }}>
-                            <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-                              <span style={{ 
-                                display: "inline-block",
-                                padding: "2px 6px",
-                                borderRadius: 4,
-                                fontSize: 10,
-                                fontWeight: 600,
-                                background: priority.bg,
-                                border: `1px solid ${priority.border}`,
-                                color: priority.text,
-                                minWidth: 24,
-                                textAlign: "center"
-                              }}>
-                                {priority.label}
-                              </span>
-                              <span style={{
-                                display: "inline-block",
-                                padding: "2px 6px",
-                                borderRadius: 4,
-                                fontSize: 10,
-                                fontWeight: 500,
-                                background: isMyTask ? "#ecfdf5" : "var(--card-bg)",
-                                border: `1px solid ${isMyTask ? "#86efac" : "var(--card-border)"}`,
-                                color: assigneeColor,
-                                maxWidth: "80px",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap"
-                              }}>
-                                {item.assignee}
-                              </span>
-                            </div>
-                            <span style={{ flex: 1, minWidth: 0, wordBreak: "break-word" }}>{String(item.text)}</span>
-                          </li>
-                        );
-                      })}
-                  </ul>
-                </section>
-              </div>
-            </div>
-
-            <div style={{ background: "var(--card-bg)", borderRadius: 8, padding: "16px", marginTop: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}>
-              <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12, color: "var(--foreground)" }}>📝 詳細解説</h2>
-              <p style={{ fontSize: 13, color: "var(--foreground)", lineHeight: 1.7, margin: 0, wordBreak: "break-word" }}>
-                {result.detailed_analysis}
-              </p>
-            </div>
-          </>
-        )}
-
-        {historyOpen && history.length > 0 && (
-          <div style={{ marginTop: 20 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", marginBottom: 10 }}>📜 過去のみえーる化</h3>
-            <ul style={{ display: "grid", gap: 10, listStyle: "none", padding: 0 }}>
-              {history.map((h) => (
-                <li
-                  key={h.id}
-                  style={{
-                    background: "var(--card-bg)",
-                    border: "1px solid var(--card-border)",
-                    borderRadius: 8,
-                    padding: 12,
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                    position: "relative"
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--card-border)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--card-border)")}
-                  onClick={() => {
-                    setInput(String(h.input));
-                    setResult(h.result);
-                  }}
-                >
-                  <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 6, paddingRight: 30 }}>
-                    {new Date(h.at).toLocaleString("ja-JP")}
-                  </div>
-                  <div style={{ fontSize: 13, color: "var(--foreground)", paddingRight: 30 }}>
-                    {String(h.input).slice(0, 120)}
-                    {String(h.input).length > 120 ? "…" : ""}
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (confirm("この履歴を削除しますか？")) {
-                        deleteHistoryItem(h.id);
-                      }
-                    }}
-                    style={{
-                      position: "absolute",
-                      right: 8,
-                      top: 8,
-                      background: "transparent",
-                      border: "none",
-                      color: "#dc2626",
-                      cursor: "pointer",
-                      fontSize: 18,
-                      padding: 4,
-                      lineHeight: 1
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.color = "#b91c1c"}
-                    onMouseLeave={(e) => e.currentTarget.style.color = "#dc2626"}
-                  >
-                    ✕
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        <p style={{ marginTop: 20, fontSize: 11, color: "var(--text-secondary)", textAlign: "center" }}>
-          タスク整理くん - やるべきことを可視化
-        </p>
+  // PC Layout
+  return (
+    <div style={{ minHeight: "100vh", padding: 16, background: "var(--background)" }}>
+      <Header />
+      <div style={{ display: "flex", gap: 16, alignItems: "stretch", minHeight: "calc(100vh - 120px)" }}>
+        <Sidebar />
+        <MainContent />
+        <ResultPanel />
       </div>
     </div>
   );

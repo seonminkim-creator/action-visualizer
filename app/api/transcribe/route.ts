@@ -25,16 +25,22 @@ async function transcribeWithGemini(audioFile: Blob, apiKey: string): Promise<st
   const arrayBuffer = await audioFile.arrayBuffer();
   const base64Audio = Buffer.from(arrayBuffer).toString("base64");
 
-  // Gemini 2.0 Flash（高速・軽量モデル）を使用
-  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
+  // Gemini 3 Flash（次世代高速モデル）を使用
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
 
   const requestBody = {
     contents: [
       {
         parts: [
           {
-            // シンプルなプロンプト（トークン節約）
-            text: "この音声を日本語で文字起こししてください。",
+            // プロンプト強化: フィラー除去、方言補正、話者分離の指示を追加
+            text: `この音声を日本語で文字起こししてください。
+
+【重要な指示】
+1. **話者分離**: 複数の話者がいる場合は、[話者A], [話者B] のようにラベルを付けて区別してください。
+2. **フィラー除去**: 「えー」「あのー」「そのー」などの不要な間音（フィラー）は除去してください。
+3. **正確性**: 農業に関する専門用語やビジネス用語が正しく変換されるように注意してください。
+4. **自然な日本語**: 話し言葉を尊重しつつ、文章として読みやすいように整理してください。`,
           },
           {
             inline_data: {

@@ -14,13 +14,33 @@ function ensureLogDir() {
 }
 
 // ログを追加
-export function appendLog(log: UsageLog) {
+export async function appendLog(log: UsageLog) {
   try {
-    ensureLogDir();
-    const logLine = JSON.stringify(log) + '\n';
-    fs.appendFileSync(LOG_FILE, logLine, 'utf-8');
+    // ローカル保存（開発環境用）
+    if (process.env.NODE_ENV === 'development') {
+      ensureLogDir();
+      const logLine = JSON.stringify(log) + '\n';
+      fs.appendFileSync(LOG_FILE, logLine, 'utf-8');
+    }
   } catch (error) {
-    console.error('ログ保存エラー:', error);
+    console.error('ローカルログ保存エラー:', error);
+  }
+
+  // クラウド保存（Google Sheets）
+  try {
+    const { appendToGlobalSheet } = await import('./google-sheets');
+    await appendToGlobalSheet({
+      timestamp: log.timestamp,
+      userId: log.userId,
+      action: log.action,
+      status: log.status,
+      processingTime: log.processingTime,
+      characterCount: log.characterCount,
+      errorMessage: log.errorMessage,
+      userAgent: log.userAgent
+    });
+  } catch (error) {
+    console.error('クラウドログ保存エラー:', error);
   }
 }
 
