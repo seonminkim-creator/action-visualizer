@@ -174,8 +174,8 @@ export async function POST(req: NextRequest) {
     const fileSizeMB = audioFile.size / 1024 / 1024;
     console.log(`🎤 音声データを受信: ${audioFile.size} bytes (${fileSizeMB.toFixed(2)} MB), type: ${audioFile.type}`);
 
-    // ファイルサイズチェック（20MB以上は警告）
-    if (fileSizeMB > 20) {
+    // ファイルサイズチェック（100MB以上は警告）
+    if (fileSizeMB > 100) {
       console.warn(`⚠️ 大きなファイル: ${fileSizeMB.toFixed(2)} MB - 処理時間が長くなる可能性があります`);
     }
 

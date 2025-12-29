@@ -106,9 +106,9 @@ export default function MeetingRecorder() {
 
         // 文字起こし実行
         try {
-          // ファイルサイズ制限 (25MB)
-          if (file.size > 25 * 1024 * 1024) {
-            setError(`${file.name}はファイルサイズが大きすぎます(25MB制限)`);
+          // ファイルサイズ制限 (100MB)
+          if (file.size > 100 * 1024 * 1024) {
+            setError(`${file.name}はファイルサイズが大きすぎます(100MB制限)`);
             continue;
           }
 
