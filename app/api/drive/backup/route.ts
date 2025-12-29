@@ -3,16 +3,19 @@ import {
   getDriveClient,
   getOrCreateBackupFolder,
   uploadBackupFile,
+  uploadFile,
 } from "@/lib/utils/google-drive";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 300; // 5分（複数ファイル対応）
 
 /**
  * バックアップファイルをGoogle Driveにアップロード
  *
  * POST /api/drive/backup
- * Body: { fileName, content }
+ * Body:
+ *   - 単一ファイル: { fileName, content }
+ *   - 複数ファイル: { files: [{ fileName, content, path? }], folderName? }
  */
 export async function POST(req: NextRequest) {
   try {
@@ -26,7 +29,71 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { fileName, content } = await req.json();
+    const body = await req.json();
+    const drive = getDriveClient(accessToken, refreshToken);
+
+    // バックアップフォルダを取得/作成
+    const backupFolderId = await getOrCreateBackupFolder(drive);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+
+    // 複数ファイルモード
+    if (body.files && Array.isArray(body.files)) {
+      const folderName = body.folderName || `backup_${timestamp}`;
+
+      // サブフォルダを作成
+      const subFolder = await drive.files.create({
+        requestBody: {
+          name: folderName,
+          mimeType: "application/vnd.google-apps.folder",
+          parents: [backupFolderId],
+        },
+        fields: "id, webViewLink",
+      });
+      const subFolderId = subFolder.data.id!;
+
+      console.log(`📦 バックアップフォルダ作成: ${folderName}`);
+
+      const uploadedFiles: Array<{ fileName: string; id: string; webViewLink: string }> = [];
+
+      for (const file of body.files) {
+        if (!file.fileName || !file.content) continue;
+
+        // パスが含まれている場合はファイル名のみ使用
+        const cleanFileName = file.path
+          ? file.path.replace(/\//g, "_")
+          : file.fileName;
+
+        const result = await uploadFile(
+          drive,
+          subFolderId,
+          cleanFileName,
+          "text/plain",
+          file.content
+        );
+
+        uploadedFiles.push({
+          fileName: cleanFileName,
+          id: result.id,
+          webViewLink: result.webViewLink,
+        });
+
+        console.log(`  ✅ ${cleanFileName}`);
+      }
+
+      console.log(`✅ バックアップ完了: ${uploadedFiles.length}ファイル`);
+
+      return NextResponse.json({
+        success: true,
+        folderId: subFolderId,
+        folderName,
+        webViewLink: subFolder.data.webViewLink,
+        files: uploadedFiles,
+        totalFiles: uploadedFiles.length,
+      });
+    }
+
+    // 単一ファイルモード（後方互換性）
+    const { fileName, content } = body;
 
     if (!fileName || !content) {
       return NextResponse.json(
@@ -37,16 +104,7 @@ export async function POST(req: NextRequest) {
 
     console.log(`📦 バックアップアップロード開始: ${fileName}`);
 
-    const drive = getDriveClient(accessToken, refreshToken);
-
-    // バックアップフォルダを取得/作成
-    const backupFolderId = await getOrCreateBackupFolder(drive);
-
-    // タイムスタンプ付きファイル名
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const backupFileName = `${timestamp}_${fileName}`;
-
-    // ファイルをアップロード
     const result = await uploadBackupFile(drive, backupFolderId, backupFileName, content);
 
     console.log(`✅ バックアップ完了: ${backupFileName}`);

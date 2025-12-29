@@ -402,7 +402,7 @@ export async function getMeetingData(
 }
 
 // バックアップ用フォルダ名
-const BACKUP_FOLDER_NAME = "会議まとめくん_バックアップ";
+const BACKUP_FOLDER_NAME = "action-visualizer_バックアップ";
 
 /**
  * バックアップ用フォルダを取得または作成
