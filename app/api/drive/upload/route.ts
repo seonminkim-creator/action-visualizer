@@ -207,12 +207,28 @@ async function generateWordDocument(
             spacing: { before: 200, after: 100 },
           })
         );
-      } else if (line.startsWith("■ ") || line.startsWith("### ")) {
+      } else if (line.startsWith("### ")) {
+        children.push(
+          new Paragraph({
+            text: line.replace("### ", ""),
+            heading: HeadingLevel.HEADING_5,
+            spacing: { before: 200, after: 100 },
+          })
+        );
+      } else if (line.startsWith("#### ")) {
+        children.push(
+          new Paragraph({
+            text: line.replace("#### ", ""),
+            heading: HeadingLevel.HEADING_6,
+            spacing: { before: 150, after: 80 },
+          })
+        );
+      } else if (line.startsWith("■ ")) {
         children.push(
           new Paragraph({
             children: [
               new TextRun({
-                text: line.replace(/^(■ |### )/, ""),
+                text: line.replace("■ ", ""),
                 bold: true,
               }),
             ],
@@ -300,6 +316,7 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const title = formData.get("title") as string;
     const audioFile = formData.get("audio") as Blob | null;
+    const audioFileId = formData.get("audioFileId") as string | null;
     const transcript = formData.get("transcript") as string | null;
     const minutes = formData.get("minutes") as string | null;
     const metadata = formData.get("metadata") as string | null;
@@ -330,8 +347,33 @@ export async function POST(req: NextRequest) {
       metadata?: { id: string; webViewLink: string };
     } = {};
 
-    // 音声ファイルをアップロード（元の形式を維持）
-    if (audioFile && audioFile.size > 0) {
+    // 音声ファイルの処理
+    if (audioFileId) {
+      // すでにDriveにあるファイルを会議フォルダに移動
+      try {
+        const file = await drive.files.get({ fileId: audioFileId, fields: "parents" });
+        const previousParents = file.data.parents?.join(",") || "";
+        
+        await drive.files.update({
+          fileId: audioFileId,
+          addParents: meetingFolderId,
+          removeParents: previousParents,
+          fields: "id, webViewLink",
+        });
+
+        // ファイル名を統一（任意）
+        await drive.files.update({
+          fileId: audioFileId,
+          requestBody: { name: "recording.webm" }
+        });
+
+        const updatedFile = await drive.files.get({ fileId: audioFileId, fields: "id, webViewLink" });
+        uploadedFiles.audio = { id: updatedFile.data.id!, webViewLink: updatedFile.data.webViewLink || "" };
+        console.log(`✅ 既存の音声ファイルを会議フォルダに移動しました: ${audioFileId}`);
+      } catch (moveError) {
+        console.error("音声ファイルの移動に失敗:", moveError);
+      }
+    } else if (audioFile && audioFile.size > 0) {
       const audioBuffer = Buffer.from(await audioFile.arrayBuffer());
       // ファイルタイプから拡張子とMIMEタイプを決定
       const mimeType = audioFile.type || "audio/webm";

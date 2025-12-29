@@ -866,12 +866,51 @@ export default function MeetingRecorder() {
         }));
       }
 
-      // 録音した音声があればそちらを優先、なければアップロードした音声ファイル
+      // 録音した音声またはアップロードされた音声ファイルを取得
+      let finalAudioBlob: Blob | null = null;
+      let finalFileName = "recording.webm";
+
       if (currentAudioChunks.length > 0) {
-        const audioBlob = new Blob(currentAudioChunks, { type: "audio/webm" });
-        formData.append("audio", audioBlob, "recording.webm");
+        finalAudioBlob = new Blob(currentAudioChunks, { type: "audio/webm" });
       } else if (uploadedAudioFile) {
-        formData.append("audio", uploadedAudioFile, uploadedAudioFile.name);
+        finalAudioBlob = uploadedAudioFile;
+        finalFileName = uploadedAudioFile.name;
+      }
+
+      // Vercelのペイロードサイズ制限（約4.5MB）対策
+      // 4MBを超える場合は直接Driveにアップロードし、IDだけをサーバーに送る
+      if (finalAudioBlob && finalAudioBlob.size > 4 * 1024 * 1024) {
+        console.log(`📦 音声ファイルが大きいため（${(finalAudioBlob.size / 1024 / 1024).toFixed(1)}MB）、直接Driveにアップロードします...`);
+        
+        // 1. 一時的なアクセストークンを取得
+        const tokenRes = await fetch("/api/auth/drive-token");
+        if (!tokenRes.ok) throw new Error("Driveアクセストークンの取得に失敗しました");
+        const { accessToken } = await tokenRes.json();
+
+        // 2. Google Drive APIに直接アップロード（multipart upload）
+        const metadata = {
+          name: finalFileName,
+          mimeType: finalAudioBlob.type || "audio/webm",
+        };
+        const uploadFormData = new FormData();
+        uploadFormData.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+        uploadFormData.append("file", finalAudioBlob);
+
+        const uploadRes = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}` },
+          body: uploadFormData,
+        });
+
+        if (!uploadRes.ok) throw new Error("Google Driveへの直接アップロードに失敗しました");
+        const { id } = await uploadRes.json();
+        
+        // 3. 取得したIDをフォームデータに追加
+        console.log(`✅ 直接アップロード成功 (ID: ${id})`);
+        formData.append("audioFileId", id);
+      } else if (finalAudioBlob) {
+        // 小さいファイルは通常通り送信
+        formData.append("audio", finalAudioBlob, finalFileName);
       }
 
       const res = await fetch("/api/drive/upload", {
@@ -881,7 +920,7 @@ export default function MeetingRecorder() {
 
       if (res.ok) {
         const data = await res.json();
-        console.log("✅ Google Driveにアップロード完了:", data.folderId);
+        console.log("✅ Google Driveに保存完了:", data.folderId);
         setSavedFolderId(data.folderId);
         await loadDriveMeetings();
         // ローカル履歴（下書き）をクリア
@@ -890,11 +929,11 @@ export default function MeetingRecorder() {
         setSelectedCategory("general");
       } else {
         const errorData = await res.json();
-        setError(errorData.error || "アップロードに失敗しました");
+        setError(errorData.error || "保存に失敗しました");
       }
     } catch (err) {
       console.error("アップロードエラー:", err);
-      setError("アップロード中にエラーが発生しました");
+      setError("保存中にエラーが発生しました（ファイルサイズが大きすぎる可能性があります）");
     } finally {
       setUploadingToDrive(false);
     }
