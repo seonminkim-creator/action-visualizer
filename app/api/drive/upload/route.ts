@@ -320,6 +320,8 @@ export async function POST(req: NextRequest) {
     const transcript = formData.get("transcript") as string | null;
     const minutes = formData.get("minutes") as string | null;
     const metadata = formData.get("metadata") as string | null;
+    const attachments = formData.getAll("attachments") as Blob[];
+    const attachmentFileIds = formData.getAll("attachmentFileIds") as string[];
 
     if (!title) {
       return NextResponse.json(
@@ -345,13 +347,16 @@ export async function POST(req: NextRequest) {
       minutes?: { id: string; webViewLink: string };
       minutesDocx?: { id: string; webViewLink: string };
       metadata?: { id: string; webViewLink: string };
-    } = {};
+      attachments: Array<{ id: string; name: string; webViewLink: string }>;
+    } = {
+      attachments: [],
+    };
 
     // 音声ファイルの処理
     if (audioFileId) {
       // すでにDriveにあるファイルを会議フォルダに移動
       try {
-        const file = await drive.files.get({ fileId: audioFileId, fields: "parents" });
+        const file = await drive.files.get({ fileId: audioFileId, fields: "parents, name" });
         const previousParents = file.data.parents?.join(",") || "";
         
         await drive.files.update({
@@ -361,32 +366,28 @@ export async function POST(req: NextRequest) {
           fields: "id, webViewLink",
         });
 
-        // ファイル名を統一（任意）
-        await drive.files.update({
-          fileId: audioFileId,
-          requestBody: { name: "recording.webm" }
-        });
+        // 録音データの場合はファイル名を統一
+        if (file.data.name?.startsWith("TEMP_")) {
+          await drive.files.update({
+            fileId: audioFileId,
+            requestBody: { name: "recording.webm" }
+          });
+        }
 
         const updatedFile = await drive.files.get({ fileId: audioFileId, fields: "id, webViewLink" });
         uploadedFiles.audio = { id: updatedFile.data.id!, webViewLink: updatedFile.data.webViewLink || "" };
-        console.log(`✅ 既存の音声ファイルを会議フォルダに移動しました: ${audioFileId}`);
+        console.log(`✅ 音声ファイルを会議フォルダに移動しました: ${audioFileId}`);
       } catch (moveError) {
         console.error("音声ファイルの移動に失敗:", moveError);
       }
     } else if (audioFile && audioFile.size > 0) {
       const audioBuffer = Buffer.from(await audioFile.arrayBuffer());
-      // ファイルタイプから拡張子とMIMEタイプを決定
       const mimeType = audioFile.type || "audio/webm";
       let extension = "webm";
-      if (mimeType.includes("mp3") || mimeType.includes("mpeg")) {
-        extension = "mp3";
-      } else if (mimeType.includes("wav")) {
-        extension = "wav";
-      } else if (mimeType.includes("m4a") || mimeType.includes("mp4")) {
-        extension = "m4a";
-      } else if (mimeType.includes("webm")) {
-        extension = "webm";
-      }
+      if (mimeType.includes("mp3") || mimeType.includes("mpeg")) extension = "mp3";
+      else if (mimeType.includes("wav")) extension = "wav";
+      else if (mimeType.includes("m4a") || mimeType.includes("mp4")) extension = "m4a";
+
       const audioResult = await uploadFile(
         drive,
         meetingFolderId,
@@ -395,33 +396,47 @@ export async function POST(req: NextRequest) {
         audioBuffer
       );
       uploadedFiles.audio = audioResult;
-      console.log(`✅ 音声ファイルをアップロード: ${audioResult.id}`);
     }
 
-    // 文字起こしをアップロード
+    // 文字起こしと議事録のアップロード (省略...以前のまま)
     if (transcript) {
-      const transcriptResult = await uploadFile(
-        drive,
-        meetingFolderId,
-        "transcript.txt",
-        "text/plain",
-        transcript
-      );
-      uploadedFiles.transcript = transcriptResult;
-      console.log(`✅ 文字起こしをアップロード: ${transcriptResult.id}`);
+      uploadedFiles.transcript = await uploadFile(drive, meetingFolderId, "transcript.txt", "text/plain", transcript);
+    }
+    if (minutes) {
+      uploadedFiles.minutes = await uploadFile(drive, meetingFolderId, "minutes.md", "text/markdown", minutes);
     }
 
-    // 議事録をアップロード（Markdown形式）
-    if (minutes) {
-      const minutesResult = await uploadFile(
-        drive,
-        meetingFolderId,
-        "minutes.md",
-        "text/markdown",
-        minutes
-      );
-      uploadedFiles.minutes = minutesResult;
-      console.log(`✅ 議事録（Markdown）をアップロード: ${minutesResult.id}`);
+    // --- 添付ファイルの処理 ---
+    // 1. 小さい添付ファイルのアップロード
+    for (const file of attachments) {
+      if (file instanceof File) {
+        const result = await uploadFile(
+          drive,
+          meetingFolderId,
+          file.name,
+          file.type || "application/octet-stream",
+          Buffer.from(await file.arrayBuffer())
+        );
+        uploadedFiles.attachments.push({ id: result.id, name: file.name, webViewLink: result.webViewLink });
+      }
+    }
+
+    // 2. すでに直接アップロードされた添付ファイルの移動
+    for (const fileId of attachmentFileIds) {
+      try {
+        const file = await drive.files.get({ fileId, fields: "parents, name" });
+        const previousParents = file.data.parents?.join(",") || "";
+        await drive.files.update({
+          fileId,
+          addParents: meetingFolderId,
+          removeParents: previousParents,
+          fields: "id, name, webViewLink",
+        });
+        const updated = await drive.files.get({ fileId, fields: "id, name, webViewLink" });
+        uploadedFiles.attachments.push({ id: updated.data.id!, name: updated.data.name!, webViewLink: updated.data.webViewLink || "" });
+      } catch (e) {
+        console.error("添付ファイルの移動失敗:", e);
+      }
     }
 
     // メタデータをアップロード
