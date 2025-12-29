@@ -46,7 +46,7 @@ ${transcript}
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -56,7 +56,7 @@ ${transcript}
             temperature: 0.1, // Gemini API最適化: より決定的に高速化
             topP: 0.8,
             topK: 20,
-            maxOutputTokens: isVeryLong ? 2000 : 3000,
+            maxOutputTokens: 8192,
             candidateCount: 1, // Gemini API最適化: 1つの候補のみ生成（高速化）
           },
         }),
@@ -174,7 +174,7 @@ export async function POST(req: NextRequest) {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent?key=${apiKey}`,
           {
             method: "POST",
             headers: {

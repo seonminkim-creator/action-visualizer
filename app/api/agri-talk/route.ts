@@ -150,7 +150,7 @@ ${searchResultText}
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent?key=${geminiApiKey}`,
         {
           method: "POST",
           headers: {
@@ -170,7 +170,7 @@ ${searchResultText}
               temperature: 0.7,
               topP: 0.95,
               topK: 40,
-              maxOutputTokens: 4096, // トークン数を削減
+              maxOutputTokens: 8192,
             },
           }),
           signal: AbortSignal.timeout(50000), // 50秒タイムアウト（Node.js Runtime: 60秒以内）

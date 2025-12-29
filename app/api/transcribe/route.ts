@@ -26,8 +26,8 @@ async function transcribeWithGemini(audioFile: Blob, apiKey: string): Promise<st
   const arrayBuffer = await audioFile.arrayBuffer();
   const base64Audio = Buffer.from(arrayBuffer).toString("base64");
 
-  // Gemini 2.0 Flash（最高精度の最新モデル）を使用
-  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
+  // Gemini 3 Flash（最新の第3世代高速モデル）を使用
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
 
   const requestBody = {
     contents: [
@@ -56,7 +56,7 @@ async function transcribeWithGemini(audioFile: Blob, apiKey: string): Promise<st
       temperature: 0, // 完全に決定的（最速）
       topP: 1,
       topK: 1, // 最小（最速）
-      maxOutputTokens: 65536, // Gemini 2.0のトークン上限に近い値を設定し、長文に対応
+      maxOutputTokens: 64000, // Gemini 3の最大出力上限まで拡大し、絶対に途切れないようにする
       candidateCount: 1,
     },
     // 安全性フィルターを緩和（処理高速化）
