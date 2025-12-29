@@ -27,7 +27,7 @@ async function summarizeTranscript(transcript: string, apiKey: string): Promise<
   const isVeryLong = transcript.length > 15000;
   const targetRatio = isVeryLong ? "20%" : "30%";
 
-  const SUMMARIZE_PROMPT = `以下の会議の文字起こしを、重要な内容を保ちながら**極めて簡潔**に要約してください。
+  const SUMMARIZE_PROMPT = `以下の会議の文字起こしを、重要な内容を保ちながら極めて簡潔に要約してください。
 
 【要約のルール】
 1. 会議の目的や背景を1-2文で記載
@@ -156,12 +156,12 @@ export async function POST(req: NextRequest) {
 - medium: 今週中に着手すべき、重要なタスク
 - low: 時間があるときに対応、期限が明示されていないタスク
 
-【ルール】
 - JSON形式で返すこと
 - titleは会議の主題を端的に表現（会社名・プロジェクト名+会議種別が理想）
 - discussions と decisions は箇条書き形式で簡潔に（必ず「・」で始める）
 - todos は具体的な行動項目のみ抽出
 - detailedMinutes はMarkdown形式で記述し、階層構造（##, ###, -）を活用して読みやすく整理すること。単なる文章の羅列は不可。
+- **重要: detailedMinutes内では太字（**テキスト**）を使用しないでください。強調が必要な場合は、見出し（###）や箇条書き（-）で表現してください。**
 - 担当者名が不明な場合は"未定"とする
 
 必ずJSON形式で返してください。`;
@@ -278,6 +278,19 @@ export async function POST(req: NextRequest) {
               processingTime: Date.now() - startTime,
               userAgent: req.headers.get('user-agent') || undefined,
             });
+
+            // 太字（**）を除去する後処理
+            const cleanText = (text: string) => text.replace(/\*\*/g, "");
+            
+            parsed.detailedMinutes = cleanText(parsed.detailedMinutes);
+            parsed.summary.purpose = cleanText(parsed.summary.purpose);
+            parsed.summary.discussions = parsed.summary.discussions.map(cleanText);
+            parsed.summary.decisions = parsed.summary.decisions.map(cleanText);
+            parsed.todos = parsed.todos.map(todo => ({
+              ...todo,
+              task: cleanText(todo.task),
+              assignee: cleanText(todo.assignee),
+            }));
 
             return NextResponse.json(parsed);
           } catch (parseError) {

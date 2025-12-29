@@ -189,6 +189,15 @@ export default function MeetingRecorder() {
         }
       }
     }
+
+    // すべてのファイル処理が終わった後、音声ファイルが含まれていれば自動で議事録生成を開始
+    const hasAudio = files.some(f => f.type.startsWith("audio/") || f.type.startsWith("video/"));
+    if (hasAudio && autoGenerateSummary) {
+      console.log("⏱️ 全ファイルのアップロード完了。3秒後に議事録を自動生成します...");
+      setTimeout(() => {
+        generateSummary();
+      }, 3000);
+    }
   };
 
   // 結果が生成されたら自動的にプレビュータブへ移動（モバイル）
@@ -280,15 +289,62 @@ export default function MeetingRecorder() {
     try {
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          const formData = new FormData();
-          formData.append("audio", audioBlob);
+          let response: Response;
 
-          console.log(`📤 セグメント ${segmentNum} を送信中... (試行${attempt}/${maxRetries}, ${(audioBlob.size / 1024 / 1024).toFixed(2)} MB)`);
+          // 4MBを超える場合はGoogle Drive経由で処理（Vercelのペイロード制限回避）
+          if (audioBlob.size > 4 * 1024 * 1024 && isDriveConnected) {
+            console.log(`📡 セグメント ${segmentNum}: 大容量のためGoogle Drive経由で送信します (${(audioBlob.size / 1024 / 1024).toFixed(2)} MB)`);
+            
+            // 1. 一時的なアクセストークンを取得
+            const tokenRes = await fetch("/api/auth/drive-token");
+            if (!tokenRes.ok) throw new Error("Drive認証情報の取得に失敗しました");
+            const { accessToken } = await tokenRes.json();
 
-          const response = await fetch("/api/transcribe", {
-            method: "POST",
-            body: formData,
-          });
+            // 2. ブラウザからGoogle Driveへ直接アップロード
+            const boundary = "transcribe_boundary";
+            const metadata = {
+              name: `TEMP_SEG_${segmentNum}_${Date.now()}.webm`,
+              mimeType: audioBlob.type || "audio/webm",
+            };
+
+            const part1 = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: ${audioBlob.type || "audio/webm"}\r\n\r\n`;
+            const part2 = `\r\n--${boundary}--`;
+            const multipartBody = new Blob([part1, audioBlob, part2], { type: `multipart/related; boundary=${boundary}` });
+
+            const uploadRes = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${accessToken}` },
+              body: multipartBody,
+            });
+
+            if (!uploadRes.ok) {
+              const errorText = await uploadRes.text();
+              throw new Error(`Driveへの直接アップロードに失敗: ${errorText}`);
+            }
+
+            const driveData = await uploadRes.json();
+            const fileId = driveData.id;
+
+            // 3. ファイルIDをバックエンドに送って文字起こし
+            const formData = new FormData();
+            formData.append("fileId", fileId);
+            
+            response = await fetch("/api/transcribe", {
+              method: "POST",
+              body: formData,
+            });
+          } else {
+            // 通常の送信
+            const formData = new FormData();
+            formData.append("audio", audioBlob);
+
+            console.log(`📤 セグメント ${segmentNum} を送信中... (試行${attempt}/${maxRetries}, ${(audioBlob.size / 1024 / 1024).toFixed(2)} MB)`);
+
+            response = await fetch("/api/transcribe", {
+              method: "POST",
+              body: formData,
+            });
+          }
 
           console.log(`📥 セグメント ${segmentNum} のレスポンス: status=${response.status}, ok=${response.ok} (試行${attempt}/${maxRetries})`);
 
