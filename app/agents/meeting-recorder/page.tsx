@@ -63,7 +63,7 @@ export default function MeetingRecorder() {
 
   // ファイルアップロード用state
   const [isDragging, setIsDragging] = useState<boolean>(false);
-  const [uploadedFileName, setUploadedFileName] = useState<string>("");
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [uploadedAudioFile, setUploadedAudioFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -82,6 +82,63 @@ export default function MeetingRecorder() {
 
   // モバイル用タブステート
   const [activeTab, setActiveTab] = useState<"history" | "record" | "preview">("record");
+
+  const handleFilesUpload = async (files: File[]) => {
+    if (files.length === 0) return;
+
+    // ステート更新
+    setUploadedFiles(prev => [...prev, ...files]);
+
+    for (const file of files) {
+      if (file.type.startsWith("text/") || file.name.endsWith(".txt") || file.name.endsWith(".md")) {
+        // テキストファイル
+        const text = await file.text();
+        setTranscript(prev => prev + (prev ? "\n\n" : "") + `【${file.name}】\n` + text);
+      } else if (
+        file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+        file.name.endsWith(".docx")
+      ) {
+        // Wordファイル
+        setTranscript(prev => prev + (prev ? "\n\n" : "") + `【${file.name}】\n(Wordファイルの内容は現在プレビューできませんが、添付として認識されました)`);
+      } else if (file.type.startsWith("audio/") || file.type.startsWith("video/")) {
+        // 音声・動画ファイル
+        setUploadedAudioFile(file); // 最後の音声ファイルをセット（Drive保存用）
+
+        // 文字起こし実行
+        try {
+          // ファイルサイズ制限 (25MB)
+          if (file.size > 25 * 1024 * 1024) {
+            setError(`${file.name}はファイルサイズが大きすぎます(25MB制限)`);
+            continue;
+          }
+
+          const formData = new FormData();
+          formData.append("audio", file);
+          setProcessingStage(`${file.name} を文字起こし中...`);
+          setLoading(true);
+
+          const res = await fetch("/api/transcribe", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            setTranscript(prev => prev + (prev ? "\n\n" : "") + `【${file.name} (文字起こし)】\n` + data.transcription);
+          } else {
+            const err = await res.json();
+            setError(`${file.name}の文字起こしに失敗: ${err.error || "不明なエラー"}`);
+          }
+        } catch (err) {
+          console.error("ファイル処理エラー:", err);
+          setError(`${file.name}の処理に失敗しました`);
+        } finally {
+          setLoading(false);
+          setProcessingStage("");
+        }
+      }
+    }
+  };
 
   // 結果が生成されたら自動的にプレビュータブへ移動（モバイル）
   useEffect(() => {
@@ -704,49 +761,7 @@ export default function MeetingRecorder() {
     }
   };
 
-  const handleFileUpload = async (file: File) => {
-    const fileName = file.name.toLowerCase();
-    setUploadedFileName(file.name);
 
-    try {
-      if (fileName.endsWith(".txt")) {
-        const text = await file.text();
-        setTranscript(prev => prev + (prev ? "\n\n" : "") + text);
-      } else if (fileName.endsWith(".docx")) {
-        const formData = new FormData();
-        formData.append("file", file);
-        const res = await fetch("/api/extract-text", {
-          method: "POST",
-          body: formData,
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setTranscript(prev => prev + (prev ? "\n\n" : "") + data.text);
-        }
-      } else if (fileName.endsWith(".mp3") || fileName.endsWith(".wav") || fileName.endsWith(".m4a") || fileName.endsWith(".webm")) {
-        // アップロードした音声ファイルを保存（Drive連携用）
-        setUploadedAudioFile(file);
-
-        const formData = new FormData();
-        formData.append("audio", file);
-        setProcessingStage("音声ファイルを文字起こし中...");
-        setLoading(true);
-        const res = await fetch("/api/transcribe", {
-          method: "POST",
-          body: formData,
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setTranscript(prev => prev + (prev ? "\n\n" : "") + data.transcription);
-        }
-        setLoading(false);
-        setProcessingStage("");
-      }
-    } catch (err) {
-      console.error("ファイル処理エラー:", err);
-      setError("ファイルの処理に失敗しました");
-    }
-  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -761,9 +776,9 @@ export default function MeetingRecorder() {
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    const files = e.dataTransfer.files;
+    const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
-      await handleFileUpload(files[0]);
+      await handleFilesUpload(files);
     }
   };
 
@@ -1065,8 +1080,9 @@ export default function MeetingRecorder() {
               processingSegments={processingSegments}
               onGenerateSummary={generateSummary}
               processingStage={processingStage}
-              uploadedFileName={uploadedFileName}
-              onFileUpload={handleFileUpload}
+              uploadedFiles={uploadedFiles}
+              onFilesUpload={handleFilesUpload}
+              onFilesClear={() => setUploadedFiles([])}
             />
           </div>
           <div style={{ display: activeTab === "preview" ? "block" : "none" }}>
@@ -1365,8 +1381,9 @@ export default function MeetingRecorder() {
           processingSegments={processingSegments}
           onGenerateSummary={generateSummary}
           processingStage={processingStage}
-          uploadedFileName={uploadedFileName}
-          onFileUpload={handleFileUpload}
+          uploadedFiles={uploadedFiles}
+          onFilesUpload={handleFilesUpload}
+          onFilesClear={() => setUploadedFiles([])}
         />
 
         {/* 右：結果表示（常に表示） */}

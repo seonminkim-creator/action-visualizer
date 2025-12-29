@@ -23,8 +23,9 @@ type Props = {
   processingSegments: Set<number>;
   onGenerateSummary: () => void;
   processingStage: string;
-  uploadedFileName: string;
-  onFileUpload: (file: File) => Promise<void>;
+  uploadedFiles: File[];
+  onFilesUpload: (files: File[]) => Promise<void>;
+  onFilesClear: () => void;
 };
 
 const MainContent = ({
@@ -47,8 +48,9 @@ const MainContent = ({
   processingSegments,
   onGenerateSummary,
   processingStage,
-  uploadedFileName,
-  onFileUpload,
+  uploadedFiles,
+  onFilesUpload,
+  onFilesClear,
 }: Props) => {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -72,9 +74,9 @@ const MainContent = ({
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    const files = e.dataTransfer.files;
+    const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
-      await onFileUpload(files[0]);
+      await onFilesUpload(files);
     }
   };
 
@@ -293,8 +295,13 @@ const MainContent = ({
         <input
           type="file"
           ref={fileInputRef}
-          onChange={(e) => e.target.files?.[0] && onFileUpload(e.target.files[0])}
+          onChange={(e) => {
+            if (e.target.files && e.target.files.length > 0) {
+              onFilesUpload(Array.from(e.target.files));
+            }
+          }}
           accept=".txt,.docx,.mp3,.wav,.m4a,.webm"
+          multiple
           style={{ display: "none" }}
         />
         <SectionHeader
@@ -353,6 +360,7 @@ const MainContent = ({
                 <p style={{ margin: "8px 0 0 0", fontSize: 12, opacity: 0.8 }}>
                   音声ファイル(.mp3, .wav, .m4a) → 自動文字起こし<br />
                   テキストファイル(.txt, .docx) → 内容を自動反映
+                  <br />(複数ファイル可)
                 </p>
               </div>
             </div>
@@ -363,7 +371,7 @@ const MainContent = ({
             placeholder={`会議の内容をここに入力または貼り付けてください
 
 ヒント:
-  • ファイルをドラッグ＆ドロップできます
+  • ファイルをドラッグ＆ドロップできます (複数可)
   • 音声ファイル(.mp3, .wav, .m4a)
     → 自動で文字起こし
   • テキストファイル(.txt, .docx)
@@ -384,10 +392,27 @@ const MainContent = ({
           />
         </div>
 
-        {uploadedFileName && (
-          <p style={{ fontSize: 11, color: "#10b981", marginTop: 4, marginBottom: 0 }}>
-            ✅ {uploadedFileName} を読み込みました
-          </p>
+        {uploadedFiles.length > 0 && (
+          <div style={{ marginTop: 8 }}>
+            <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: "0 0 4px 0" }}>読み込み済みファイル:</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {uploadedFiles.map((file, index) => (
+                <div key={index} style={{
+                  fontSize: 11,
+                  color: "#166534",
+                  background: "#dcfce7",
+                  padding: "2px 8px",
+                  borderRadius: 4,
+                  border: "1px solid #86efac",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4
+                }}>
+                  ✅ {file.name}
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         <div style={{
@@ -423,7 +448,7 @@ const MainContent = ({
             議事録を作成
           </button>
           <button
-            onClick={() => { onTranscriptChange(""); onSetResult(null); onError(null); }}
+            onClick={() => { onTranscriptChange(""); onSetResult(null); onError(null); onFilesClear(); }}
             disabled={loading}
             style={{
               fontSize: 12,
