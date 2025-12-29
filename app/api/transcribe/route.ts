@@ -99,13 +99,17 @@ async function transcribeWithGemini(audioFile: Blob, apiKey: string): Promise<st
           throw new Error("Invalid response format from Gemini API");
         }
 
-        const transcription = data.candidates[0].content.parts[0].text;
-        console.log(`✅ Gemini API 音声認識成功（試行${attempt}回目）`);
+        const transcription = data.candidates[0].content.parts[0].text || "";
+        console.log(`✅ Gemini API 音声認識成功（試行${attempt}回目）: ${transcription.length} 文字`);
+
+        if (transcription.trim() === "") {
+          console.warn("⚠️ Gemini returned empty transcription text");
+        }
 
         // 成功を記録（レート制限緩和）
         geminiRateLimiter.recordSuccess();
 
-        return transcription;
+        return transcription || "（音声が認識できませんでした。マイクの設定や音量を確認してください）";
       }
 
       // エラーハンドリング

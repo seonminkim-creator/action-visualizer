@@ -46,6 +46,16 @@ export default function MeetingRecorder() {
   const isManualStopRef = useRef<boolean>(false);
   const wakeLockRef = useRef<any>(null);
   const silentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const transcriptRef = useRef<string>("");
+
+  // transcript stateを同期させるラッパー
+  const updateTranscript = (val: string | ((prev: string) => string)) => {
+    setTranscript(prev => {
+      const next = typeof val === "function" ? val(prev) : val;
+      transcriptRef.current = next;
+      return next;
+    });
+  };
 
   // Google Drive連携用state
   const [isDriveConnected, setIsDriveConnected] = useState<boolean>(false);
@@ -94,7 +104,7 @@ export default function MeetingRecorder() {
       if (file.type.startsWith("text/") || file.name.endsWith(".txt") || file.name.endsWith(".md")) {
         // テキストファイル
         const text = await file.text();
-        setTranscript(prev => prev + (prev ? "\n\n" : "") + `【${file.name}】\n` + text);
+        updateTranscript(prev => prev + (prev ? "\n\n" : "") + `【${file.name}】\n` + text);
       } else if (
         file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
         file.name.endsWith(".docx")
@@ -176,7 +186,7 @@ export default function MeetingRecorder() {
 
           if (res.ok) {
             const data = await res.json();
-            setTranscript(prev => prev + (prev ? "\n\n" : "") + `【${file.name} (文字起こし)】\n` + data.transcription);
+            updateTranscript(prev => prev + (prev ? "\n\n" : "") + `【${file.name} (文字起こし)】\n` + data.transcription);
           } else {
             const err = await res.json();
             setError(`${file.name}の文字起こしに失敗: ${err.error || "不明なエラー"}`);
@@ -194,10 +204,11 @@ export default function MeetingRecorder() {
     // すべてのファイル処理が終わった後、音声ファイルが含まれていれば自動で議事録生成を開始
     const hasAudio = files.some(f => f.type.startsWith("audio/") || f.type.startsWith("video/"));
     if (hasAudio && autoGenerateSummary) {
-      console.log("⏱️ 全ファイルのアップロード完了。3秒後に議事録を自動生成します...");
+      console.log("⏱️ 全ファイルのアップロード完了。議事録の自動生成をリクエストしました...");
+      // 反映待ちのため少し待機してから最新のRefを参照
       setTimeout(() => {
         generateSummary();
-      }, 3000);
+      }, 1000);
     }
   };
 
@@ -408,7 +419,7 @@ export default function MeetingRecorder() {
           }
 
           const newTranscript = data.transcription;
-          setTranscript((prev) => {
+          updateTranscript((prev) => {
             const separator = prev ? "\n\n" : "";
             return prev + separator + `[セグメント ${segmentNum}]\n${newTranscript}`;
           });
@@ -571,9 +582,16 @@ export default function MeetingRecorder() {
             setActiveStream(null);
 
             if (autoGenerateSummary) {
-              setTimeout(() => {
-                generateSummary();
-              }, 3000);
+              // 全セグメントの終了を待つ必要があるため、少し長めに待機
+              console.log("️️⏹️ 録音終了。残りの文字起こし完了を待って議事録を生成します...");
+              const checkAndGenerate = () => {
+                if (processingSegments.size === 0) {
+                   generateSummary();
+                } else {
+                   setTimeout(checkAndGenerate, 2000);
+                }
+              };
+              setTimeout(checkAndGenerate, 3000);
             }
           } else {
             console.log(`🔄 セグメント完了 - 文字起こしして再起動`);
@@ -836,7 +854,7 @@ export default function MeetingRecorder() {
     try {
       const formData = new FormData();
       formData.append("title", title);
-      formData.append("transcript", transcript);
+      formData.append("transcript", transcriptRef.current || transcript);
 
       if (dataToUpload) {
         formData.append("minutes", dataToUpload.detailedMinutes);
@@ -973,9 +991,11 @@ export default function MeetingRecorder() {
     return `${date.getFullYear()}年${date.getMonth() + 1}月`;
   };
 
-  async function generateSummary(): Promise<void> {
-    if (!transcript.trim()) {
-      setError("会議の内容を入力してください");
+  async function generateSummary(textOverride?: string): Promise<void> {
+    const currentText = (textOverride || transcriptRef.current || transcript).trim();
+    
+    if (!currentText) {
+      setError("会議の内容を入力してください（文字起こしが終わっていない可能性があります）");
       return;
     }
 
@@ -998,7 +1018,7 @@ export default function MeetingRecorder() {
       const res = await fetch("/api/meeting-summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcript: transcript.trim() }),
+        body: JSON.stringify({ transcript: currentText }),
       });
 
       if (!res.ok) {
