@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
 
     // Gemini APIで日報を生成（リトライロジック付き）
     const model = genAI.getGenerativeModel({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash-exp",
       generationConfig: {
         temperature: 0.4, // 日報は一貫性重視で低めに設定
         topP: 0.95,

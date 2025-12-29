@@ -26,8 +26,8 @@ async function transcribeWithGemini(audioFile: Blob, apiKey: string): Promise<st
   const arrayBuffer = await audioFile.arrayBuffer();
   const base64Audio = Buffer.from(arrayBuffer).toString("base64");
 
-  // Gemini 3 Flash（次世代高速モデル）を使用
-  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+  // Gemini 2.0 Flash（最高精度の最新モデル）を使用
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`;
 
   const requestBody = {
     contents: [
@@ -38,11 +38,10 @@ async function transcribeWithGemini(audioFile: Blob, apiKey: string): Promise<st
             text: `以下の音声を日本語で非常に正確に文字起こししてください。
 
 【重要な指示】
-1. **話者分離**: 複数の話者がいる場合は、発言の区切りで [話者A], [話者B] のようにラベルを付けて区別してください。
-2. **フィラー除去**: 「えー」「あのー」「あのー、」「あー」などの不要な間音（フィラー）は徹底的に除去し、意味のある言葉のみを残してください。
-3. **正確性**: 専門用語や固有名詞が文脈に合うように正しく漢字変換してください。
-4. **クリーニング**: 独り言やマイクのノイズと思われる箇所は書き起こさないでください。
-5. **出力形式**: 文字起こし結果のテキストのみを出力してください。解説などは不要です。`,
+1. **逐一の書き起こし**: 短くまとめたり要約したりせず、聞こえる全ての言葉をそのまま、一字一句漏らさず書き出してください。
+2. **話者分離**: 複数の話者がいる場合は、[話者A], [話者B] のようにラベルを付けて区別のつくようにしてください。
+3. **フィラー除去**: 「えー」「あのー」などの不要な間音のみ、読みやすくするために適宜除去してください。
+4. **出力形式**: 文字起こし結果のテキストのみを出力してください。解説などは不要です。`,
           },
           {
             inline_data: {
@@ -57,7 +56,7 @@ async function transcribeWithGemini(audioFile: Blob, apiKey: string): Promise<st
       temperature: 0, // 完全に決定的（最速）
       topP: 1,
       topK: 1, // 最小（最速）
-      maxOutputTokens: 4096, // 必要最小限に削減
+      maxOutputTokens: 65536, // Gemini 2.0のトークン上限に近い値を設定し、長文に対応
       candidateCount: 1,
     },
     // 安全性フィルターを緩和（処理高速化）

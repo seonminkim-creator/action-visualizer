@@ -150,7 +150,7 @@ ${searchResultText}
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${geminiApiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`,
         {
           method: "POST",
           headers: {
