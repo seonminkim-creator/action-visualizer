@@ -400,3 +400,46 @@ export async function getMeetingData(
 
   return meetingData;
 }
+
+// バックアップ用フォルダ名
+const BACKUP_FOLDER_NAME = "会議まとめくん_バックアップ";
+
+/**
+ * バックアップ用フォルダを取得または作成
+ */
+export async function getOrCreateBackupFolder(drive: drive_v3.Drive): Promise<string> {
+  // 既存のフォルダを検索
+  const response = await drive.files.list({
+    q: `name='${BACKUP_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+    spaces: "drive",
+    fields: "files(id, name)",
+  });
+
+  if (response.data.files && response.data.files.length > 0) {
+    return response.data.files[0].id!;
+  }
+
+  // フォルダを作成
+  const folder = await drive.files.create({
+    requestBody: {
+      name: BACKUP_FOLDER_NAME,
+      mimeType: "application/vnd.google-apps.folder",
+    },
+    fields: "id",
+  });
+
+  console.log(`📁 Google Driveにバックアップフォルダを作成: ${BACKUP_FOLDER_NAME}`);
+  return folder.data.id!;
+}
+
+/**
+ * バックアップファイルをアップロード
+ */
+export async function uploadBackupFile(
+  drive: drive_v3.Drive,
+  backupFolderId: string,
+  fileName: string,
+  content: string
+): Promise<{ id: string; webViewLink: string }> {
+  return uploadFile(drive, backupFolderId, fileName, "text/plain", content);
+}
