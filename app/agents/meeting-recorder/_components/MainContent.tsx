@@ -26,6 +26,7 @@ type Props = {
   uploadedFiles: File[];
   onFilesUpload: (files: File[]) => Promise<void>;
   onFilesClear: () => void;
+  style?: React.CSSProperties;
 };
 
 const MainContent = ({
@@ -51,6 +52,7 @@ const MainContent = ({
   uploadedFiles,
   onFilesUpload,
   onFilesClear,
+  style,
 }: Props) => {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -82,12 +84,9 @@ const MainContent = ({
 
   return (
     <div style={{
-      flex: 1,
-      minWidth: 0,
       display: "flex",
       flexDirection: "column",
-      maxHeight: "calc(100vh - 120px)",
-      overflowY: "auto",
+      ...style
     }}>
       {/* 録音セクション */}
       <div

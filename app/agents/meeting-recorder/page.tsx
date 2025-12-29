@@ -1082,6 +1082,7 @@ export default function MeetingRecorder() {
               onDeleteMeetingFromDrive={deleteMeetingFromDrive}
               onDeleteCategory={deleteCategory}
               onAddCategory={addCategory}
+              style={{ width: "100%", maxHeight: "calc(100vh - 160px)" }}
             />
           </div>
           <div style={{ display: activeTab === "record" ? "block" : "none" }}>
@@ -1108,6 +1109,7 @@ export default function MeetingRecorder() {
               uploadedFiles={uploadedFiles}
               onFilesUpload={handleFilesUpload}
               onFilesClear={() => setUploadedFiles([])}
+              style={{ width: "100%", maxHeight: "calc(100vh - 160px)", overflowY: "auto" }}
             />
           </div>
           <div style={{ display: activeTab === "preview" ? "block" : "none" }}>
@@ -1126,6 +1128,7 @@ export default function MeetingRecorder() {
               savedFolderId={savedFolderId}
               meetingTitle={meetingTitle}
               onUploadToDrive={uploadToDrive}
+              style={{ width: "100%", maxHeight: "calc(100vh - 160px)", overflowY: "auto" }}
             />
           </div>
         </div>
@@ -1383,6 +1386,7 @@ export default function MeetingRecorder() {
           onDeleteMeetingFromDrive={deleteMeetingFromDrive}
           onDeleteCategory={deleteCategory}
           onAddCategory={addCategory}
+          style={{ width: 280, flexShrink: 0, maxHeight: "calc(100vh - 120px)" }}
         />
 
         {/* 中央：入力エリア */}
@@ -1409,6 +1413,7 @@ export default function MeetingRecorder() {
           uploadedFiles={uploadedFiles}
           onFilesUpload={handleFilesUpload}
           onFilesClear={() => setUploadedFiles([])}
+          style={{ flex: 1, minWidth: 0, maxHeight: "calc(100vh - 120px)", overflowY: "auto" }}
         />
 
         {/* 右：結果表示（常に表示） */}
@@ -1427,6 +1432,7 @@ export default function MeetingRecorder() {
           savedFolderId={savedFolderId}
           meetingTitle={meetingTitle}
           onUploadToDrive={uploadToDrive}
+          style={{ flex: 1.5, minWidth: 400, maxHeight: "calc(100vh - 120px)", overflowY: "auto" }}
         />
       </div>
 

@@ -18,6 +18,7 @@ type Props = {
   savedFolderId: string | null;
   meetingTitle: string;
   onUploadToDrive: (title: string, category: string, summaryData?: MeetingSummary) => void;
+  style?: React.CSSProperties;
 };
 
 const priorityColors = {
@@ -41,6 +42,7 @@ const ResultPanel = ({
   savedFolderId,
   meetingTitle,
   onUploadToDrive,
+  style,
 }: Props) => {
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
 
@@ -75,15 +77,12 @@ const ResultPanel = ({
 
   return (
     <div style={{
-      flex: 1.5,
-      minWidth: 450,
       background: "var(--card-bg)",
       borderRadius: 12,
       padding: 16,
-      maxHeight: "calc(100vh - 120px)",
-      overflowY: "auto",
       display: "flex",
       flexDirection: "column",
+      ...style
     }}>
       {/* セクションヘッダー（常に表示） */}
       <SectionHeader

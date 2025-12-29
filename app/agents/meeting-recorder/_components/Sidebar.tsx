@@ -18,6 +18,7 @@ type Props = {
   onDeleteMeetingFromDrive: (folderId: string, e: React.MouseEvent) => void;
   onDeleteCategory: (id: string) => void;
   onAddCategory: (name: string) => void;
+  style?: React.CSSProperties;
 };
 
 const Sidebar = ({
@@ -34,6 +35,7 @@ const Sidebar = ({
   onDeleteMeetingFromDrive,
   onDeleteCategory,
   onAddCategory,
+  style,
 }: Props) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
@@ -107,14 +109,12 @@ const Sidebar = ({
 
   return (
     <div style={{
-      width: 280,
-      flexShrink: 0,
       background: "var(--card-bg)",
       borderRadius: 12,
       padding: 16,
       display: "flex",
       flexDirection: "column",
-      maxHeight: "calc(100vh - 120px)",
+      ...style
     }}>
       {/* 履歴セクション（スクロール可能エリア） */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
