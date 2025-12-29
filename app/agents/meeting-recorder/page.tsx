@@ -112,15 +112,66 @@ export default function MeetingRecorder() {
             continue;
           }
 
-          const formData = new FormData();
-          formData.append("audio", file);
           setProcessingStage(`${file.name} を文字起こし中...`);
           setLoading(true);
 
-          const res = await fetch("/api/transcribe", {
-            method: "POST",
-            body: formData,
-          });
+          let res: Response;
+
+          // 4MBを超える場合はGoogle Drive経由で処理（Vercelのペイロード制限回避）
+          if (file.size > 4 * 1024 * 1024 && isDriveConnected) {
+            setProcessingStage(`${file.name} をGoogle Drive経由で待機中...`);
+            
+            // 1. 一時的なアクセストークンを取得
+            const tokenRes = await fetch("/api/auth/drive-token");
+            if (!tokenRes.ok) throw new Error("Drive認証情報の取得に失敗しました");
+            const { accessToken } = await tokenRes.json();
+
+            setProcessingStage(`${file.name} をGoogle Driveに一時保存中... (Vercel制限回避)`);
+
+            // 2. ブラウザからGoogle Driveへ直接アップロード（Vercelを通さないのでサイズ制限を受けない）
+            const boundary = "transcribe_boundary";
+            const metadata = {
+              name: `TEMP_TRANS_${Date.now()}_${file.name}`,
+              mimeType: file.type || "application/octet-stream",
+            };
+
+            const part1 = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: ${file.type || "application/octet-stream"}\r\n\r\n`;
+            const part2 = `\r\n--${boundary}--`;
+            
+            const multipartBody = new Blob([part1, file, part2], { type: `multipart/related; boundary=${boundary}` });
+
+            const uploadRes = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${accessToken}` },
+              body: multipartBody,
+            });
+
+            if (!uploadRes.ok) {
+              const errorText = await uploadRes.text();
+              throw new Error(`Driveへの直接アップロードに失敗: ${errorText}`);
+            }
+
+            const driveData = await uploadRes.json();
+            const fileId = driveData.id;
+
+            // 3. ファイルIDをバックエンドに送って文字起こし
+            const formData = new FormData();
+            formData.append("fileId", fileId);
+            
+            setProcessingStage(`${file.name} を文字起こし中... (Drive経由)`);
+            res = await fetch("/api/transcribe", {
+              method: "POST",
+              body: formData,
+            });
+          } else {
+            // 小さなファイルは従来通り直接送信
+            const formData = new FormData();
+            formData.append("audio", file);
+            res = await fetch("/api/transcribe", {
+              method: "POST",
+              body: formData,
+            });
+          }
 
           if (res.ok) {
             const data = await res.json();
@@ -131,7 +182,7 @@ export default function MeetingRecorder() {
           }
         } catch (err) {
           console.error("ファイル処理エラー:", err);
-          setError(`${file.name}の処理に失敗しました`);
+          setError(`${file.name}の処理中にエラーが発生しました: ${err instanceof Error ? err.message : String(err)}`);
         } finally {
           setLoading(false);
           setProcessingStage("");

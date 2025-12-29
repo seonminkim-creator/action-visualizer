@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { appendLog, generateUserId } from "@/lib/utils/logger";
 import { geminiRateLimiter } from "@/lib/utils/gemini-rate-limiter";
+import { getDriveClient, createOAuth2Client } from "@/lib/utils/google-drive";
 
 // Vercel Pro最適化: Node.js Runtime + 5分タイムアウト
 export const runtime = "nodejs";
@@ -162,17 +163,49 @@ export async function POST(req: NextRequest) {
 
   try {
     const formData = await req.formData();
-    const audioFile = formData.get("audio") as Blob;
+    const audioFile = formData.get("audio") as Blob | null;
+    const driveFileId = formData.get("fileId") as string | null;
 
-    if (!audioFile) {
+    let finalAudioBlob: Blob;
+
+    if (driveFileId) {
+      // Google Driveからファイルを取得
+      console.log(`📂 Google Driveからファイルを取得中: ${driveFileId}`);
+      
+      const accessToken = req.cookies.get("google_drive_access_token")?.value;
+      const refreshToken = req.cookies.get("google_drive_refresh_token")?.value;
+
+      if (!accessToken && !refreshToken) {
+        return NextResponse.json({ error: "Google Drive連携が必要です" }, { status: 401 });
+      }
+
+      const drive = getDriveClient(accessToken!, refreshToken);
+      
+      // メタデータを取得してMIMEタイプを確認
+      const fileMeta = await drive.files.get({
+        fileId: driveFileId,
+        fields: "mimeType, name",
+      });
+
+      // ファイル本体を取得
+      const response = await drive.files.get(
+        { fileId: driveFileId, alt: "media" },
+        { responseType: "arraybuffer" }
+      );
+
+      finalAudioBlob = new Blob([response.data as ArrayBuffer], { type: fileMeta.data.mimeType || "audio/webm" });
+      console.log(`✅ Google Driveからファイル取得完了: ${fileMeta.data.name} (${finalAudioBlob.size} bytes)`);
+    } else if (audioFile) {
+      finalAudioBlob = audioFile;
+    } else {
       return NextResponse.json(
-        { error: "音声ファイルが見つかりません" },
+        { error: "音声ファイルまたはFile IDが見つかりません" },
         { status: 400 }
       );
     }
 
-    const fileSizeMB = audioFile.size / 1024 / 1024;
-    console.log(`🎤 音声データを受信: ${audioFile.size} bytes (${fileSizeMB.toFixed(2)} MB), type: ${audioFile.type}`);
+    const fileSizeMB = finalAudioBlob.size / 1024 / 1024;
+    console.log(`🎤 音声データを受信: ${finalAudioBlob.size} bytes (${fileSizeMB.toFixed(2)} MB), type: ${finalAudioBlob.type}`);
 
     // ファイルサイズチェック（100MB以上は警告）
     if (fileSizeMB > 100) {
@@ -191,7 +224,20 @@ export async function POST(req: NextRequest) {
     }
 
     // 文字起こし実行
-    const transcription = await transcribeWithGemini(audioFile, geminiApiKey);
+    const transcription = await transcribeWithGemini(finalAudioBlob, geminiApiKey);
+
+    // 一時ファイルの削除（Google Drive経由の場合のみ）
+    if (driveFileId) {
+      try {
+        const accessToken = req.cookies.get("google_drive_access_token")?.value;
+        const refreshToken = req.cookies.get("google_drive_refresh_token")?.value;
+        const drive = getDriveClient(accessToken!, refreshToken);
+        await drive.files.delete({ fileId: driveFileId });
+        console.log(`🗑️ Google Driveの一時ファイルを削除しました: ${driveFileId}`);
+      } catch (deleteError) {
+        console.warn(`⚠️ 一時ファイルの削除に失敗しましたが、処理は継続します: ${driveFileId}`, deleteError);
+      }
+    }
 
     console.log(`📝 文字起こし完了: ${transcription.substring(0, 100)}...`);
 
