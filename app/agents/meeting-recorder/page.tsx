@@ -33,6 +33,7 @@ export default function MeetingRecorder() {
   const [micGainNode, setMicGainNode] = useState<GainNode | null>(null);
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [autoGenerateSummary, setAutoGenerateSummary] = useState<boolean>(false);
+  const [autoSaveToDrive, setAutoSaveToDrive] = useState<boolean>(true);
   const [recordingTime, setRecordingTime] = useState<number>(0);
   const [recordingInterval, setRecordingInterval] = useState<NodeJS.Timeout | null>(null);
   const [history, setHistory] = useState<Array<{ id: string; date: string; title?: string; summary: MeetingSummary; category?: string; highlight?: string }>>([]);
@@ -214,6 +215,11 @@ export default function MeetingRecorder() {
       setAutoGenerateSummary(savedAutoGenerate === "true");
     }
 
+    const savedAutoSave = localStorage.getItem("autoSaveToDrive");
+    if (savedAutoSave !== null) {
+      setAutoSaveToDrive(savedAutoSave === "true");
+    }
+
     const savedHistory = localStorage.getItem("meetingHistory");
     if (savedHistory) {
       try {
@@ -262,10 +268,18 @@ export default function MeetingRecorder() {
     }
   }, [history]);
 
-  // カテゴリーをLocalStorageに保存
   useEffect(() => {
     localStorage.setItem("meetingCategories", JSON.stringify(categories));
   }, [categories]);
+
+  // 設定をLocalStorageに保存
+  useEffect(() => {
+    localStorage.setItem("autoSaveToDrive", autoSaveToDrive.toString());
+  }, [autoSaveToDrive]);
+
+  useEffect(() => {
+    localStorage.setItem("autoGenerateSummary", autoGenerateSummary.toString());
+  }, [autoGenerateSummary]);
 
   // transcriptが変更されたら前回の結果をクリア
   useEffect(() => {
@@ -1035,11 +1049,12 @@ export default function MeetingRecorder() {
       };
       setHistory((prev) => [newHistoryItem, ...prev].slice(0, 10));
 
-      // Drive接続済みの場合、保存準備完了をログ出力（手動保存に変更）
-      if (isDriveConnected && data.title) {
-        console.log("📋 議事録作成完了。Driveへの保存準備OK:", data.title);
-        console.log("📁 音声ファイル:", currentAudioChunks.length > 0 ? "録音あり" : uploadedAudioFile ? "アップロードあり" : "なし");
-        // カテゴリーを選択してから「Driveに保存」ボタンで保存
+      // Drive接続済みかつ自動保存が有効な場合、即座に保存を実行
+      if (isDriveConnected && data.title && autoSaveToDrive) {
+        console.log("🚀 Drive自動保存を開始:", data.title);
+        uploadToDrive(data.title, selectedCategory, data);
+      } else if (isDriveConnected && data.title) {
+        console.log("📋 議事録作成完了。Driveへの保存準備OK（自動保存オフ）:", data.title);
       }
     } catch (err) {
       console.error("Meeting Summary Error:", err);
@@ -1465,15 +1480,28 @@ export default function MeetingRecorder() {
             border: "1px solid #667eea",
           }}
         >
-          <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}>
-            <input
-              type="checkbox"
-              checked={autoGenerateSummary}
-              onChange={(e) => setAutoGenerateSummary(e.target.checked)}
-              style={{ width: 16, height: 16 }}
-            />
-            文字起こし完了後、自動的に議事録を作成する
-          </label>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13 }}>
+              <input
+                type="checkbox"
+                checked={autoGenerateSummary}
+                onChange={(e) => setAutoGenerateSummary(e.target.checked)}
+                style={{ width: 16, height: 16 }}
+              />
+              文字起こし完了後、自動的に議事録を作成する
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, opacity: isDriveConnected ? 1 : 0.5 }}>
+              <input
+                type="checkbox"
+                checked={autoSaveToDrive}
+                disabled={!isDriveConnected}
+                onChange={(e) => setAutoSaveToDrive(e.target.checked)}
+                style={{ width: 16, height: 16 }}
+              />
+              議事録作成後、自動的にGoogle Driveに保存する
+              {!isDriveConnected && <span style={{ fontSize: 11, color: "#666" }}>（Drive連携が必要です）</span>}
+            </label>
+          </div>
         </div>
       )}
 
