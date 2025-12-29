@@ -37,6 +37,20 @@ export async function POST(request: NextRequest) {
         path: "/",
       });
       console.log("✅ Outlookカレンダーとの連携を解除しました");
+    } else if (provider === "google-drive") {
+      response.cookies.set("google_drive_access_token", "", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 0,
+        path: "/",
+      });
+      response.cookies.set("google_drive_refresh_token", "", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 0,
+        path: "/",
+      });
+      console.log("✅ Google Driveとの連携を解除しました");
     }
 
     return response;

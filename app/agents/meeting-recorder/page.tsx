@@ -761,6 +761,31 @@ export default function MeetingRecorder() {
     }
   };
 
+  const handleDisconnectDrive = async () => {
+    if (!confirm("Google Driveとの連携を解除しますか？")) {
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/auth/disconnect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: "google-drive" }),
+      });
+
+      if (res.ok) {
+        setIsDriveConnected(false);
+        setDriveMeetings([]);
+        console.log("✅ Google Driveの連携を解除しました");
+      } else {
+        setError("連携解除に失敗しました");
+      }
+    } catch (err) {
+      console.error("連携解除エラー:", err);
+      setError("連携解除中にエラーが発生しました");
+    }
+  };
+
 
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -1022,7 +1047,7 @@ export default function MeetingRecorder() {
           <button
             onClick={() => {
               if (isDriveConnected) {
-                loadDriveMeetings();
+                handleDisconnectDrive();
               } else {
                 window.location.href = "/api/auth/google-drive";
               }
@@ -1264,7 +1289,7 @@ export default function MeetingRecorder() {
         <button
           onClick={() => {
             if (isDriveConnected) {
-              loadDriveMeetings();
+              handleDisconnectDrive();
             } else {
               // OAuth認証ページへリダイレクト
               window.location.href = "/api/auth/google-drive";
