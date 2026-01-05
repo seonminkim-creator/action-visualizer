@@ -167,15 +167,19 @@ export async function POST(req: NextRequest) {
 
 必ずJSON形式で返してください。`;
 
-    console.log("🤖 Gemini APIで議事録を作成中...");
+    // モデル名の指定（より安定した2.0または1.5を優先）
+    const modelName = "gemini-2.0-flash"; // または "gemini-1.5-flash"
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+    console.log(`🤖 Gemini API (${modelName}) で議事録を作成中...`);
 
     let lastError = null;
-    const maxRetries = 5; // Vercel Pro: より堅牢なリトライ戦略
+    const maxRetries = 3; 
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
+          geminiUrl,
           {
             method: "POST",
             headers: {
@@ -191,12 +195,18 @@ export async function POST(req: NextRequest) {
                   ],
                 },
               ],
+              safetySettings: [
+                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+              ],
               generationConfig: {
-                temperature: 0.1, // Gemini API最適化: 決定的な生成で高速化
+                temperature: 0.1,
                 topP: 0.9,
-                topK: 20, // Gemini API最適化: より狭い範囲で高速化
+                topK: 20,
                 maxOutputTokens: 8192,
-                candidateCount: 1, // Gemini API最適化: 1つの候補のみ生成
+                candidateCount: 1,
                 responseMimeType: "application/json",
                 responseSchema: {
                   type: "object",
@@ -296,8 +306,13 @@ export async function POST(req: NextRequest) {
             return NextResponse.json(parsed);
           } catch (parseError) {
             console.error("JSON parse error:", parseError);
+            console.log("--- RAW OUTPUT START ---");
+            console.log(textOut.length > 500 ? `${textOut.substring(0, 250)}...[TRUNCATED]...${textOut.substring(textOut.length - 250)}` : textOut);
+            console.log("--- RAW OUTPUT END ---");
             lastError = "JSONのパースに失敗しました";
-            break;
+            if (attempt === maxRetries) break;
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            continue;
           }
         }
 

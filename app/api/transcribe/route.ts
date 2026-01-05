@@ -26,8 +26,9 @@ async function transcribeWithGemini(audioFile: Blob, apiKey: string): Promise<st
   const arrayBuffer = await audioFile.arrayBuffer();
   const base64Audio = Buffer.from(arrayBuffer).toString("base64");
 
-  // Gemini 3 Flash（最新の第3世代高速モデル）を使用
-  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+  // Gemini 2.0 Flash（高速・安定モデル）を使用
+  const modelName = "gemini-2.0-flash";
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
   const requestBody = {
     contents: [
