@@ -824,6 +824,11 @@ export default function MeetingRecorder() {
           // フォルダIDを保存（更新用）
           setSavedFolderId(folderId);
           console.log("✅ Driveから議事録を読み込みました:", meeting.title);
+
+          // モバイルの場合は自動的にプレビュータブへ
+          if (isMobile) {
+            setActiveTab("preview");
+          }
         }
       }
     } catch (err) {
@@ -1332,7 +1337,10 @@ export default function MeetingRecorder() {
               savedFolderId={savedFolderId}
               onLoadDriveMeetings={loadDriveMeetings}
               onLoadMeetingFromDrive={loadMeetingFromDrive}
-              onSetResult={setResult}
+              onSetResult={(res) => {
+                setResult(res);
+                if (isMobile) setActiveTab("preview");
+              }}
               onDeleteHistoryItem={deleteHistoryItem}
               onDeleteMeetingFromDrive={deleteMeetingFromDrive}
               onDeleteCategory={deleteCategory}
@@ -1369,9 +1377,9 @@ export default function MeetingRecorder() {
           </div>
           <div style={{ display: activeTab === "preview" ? "block" : "none" }}>
             <ResultPanel
-              loading={loading}
+              loading={loading || loadingFromDrive}
               result={result}
-              processingStage={processingStage}
+              processingStage={loadingFromDrive ? "Google Driveから読み込み中..." : processingStage}
               isEditMode={isEditMode}
               onSetIsEditMode={setIsEditMode}
               onSetResult={setResult}
@@ -1677,7 +1685,10 @@ export default function MeetingRecorder() {
           savedFolderId={savedFolderId}
           onLoadDriveMeetings={loadDriveMeetings}
           onLoadMeetingFromDrive={loadMeetingFromDrive}
-          onSetResult={setResult}
+          onSetResult={(res) => {
+            setResult(res);
+            if (isMobile) setActiveTab("preview");
+          }}
           onDeleteHistoryItem={deleteHistoryItem}
           onDeleteMeetingFromDrive={deleteMeetingFromDrive}
           onDeleteCategory={deleteCategory}
@@ -1714,9 +1725,9 @@ export default function MeetingRecorder() {
 
         {/* 右：結果表示（常に表示） */}
         <ResultPanel
-          loading={loading}
+          loading={loading || loadingFromDrive}
           result={result}
-          processingStage={processingStage}
+          processingStage={loadingFromDrive ? "Google Driveから読み込み中..." : processingStage}
           isEditMode={isEditMode}
           onSetIsEditMode={setIsEditMode}
           onSetResult={setResult}
