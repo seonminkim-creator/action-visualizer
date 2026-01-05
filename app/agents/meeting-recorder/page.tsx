@@ -43,6 +43,10 @@ export default function MeetingRecorder() {
   const [currentAudioChunks, setCurrentAudioChunks] = useState<Blob[]>([]);
   const [processingSegments, setProcessingSegments] = useState<Set<number>>(new Set());
   const [recommendedWaitMs, setRecommendedWaitMs] = useState<number>(15000);
+  const [segmentDuration, setSegmentDuration] = useState<number>(5); // デフォルト5分
+  const [enableSegmentation, setEnableSegmentation] = useState<boolean>(true);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const allChunksRef = useRef<Blob[]>([]); // 全ての音声を保持するRef
   const isManualStopRef = useRef<boolean>(false);
   const wakeLockRef = useRef<any>(null);
   const silentAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -93,6 +97,10 @@ export default function MeetingRecorder() {
 
   // モバイル用タブステート
   const [activeTab, setActiveTab] = useState<"history" | "record" | "preview">("record");
+  
+  // 録音時に使用したMIMEタイプとファイル拡張子を保存
+  const [recordedMimeType, setRecordedMimeType] = useState<string>("audio/webm");
+  const [recordedFileExtension, setRecordedFileExtension] = useState<string>("webm");
 
   const handleFilesUpload = async (files: File[]) => {
     if (files.length === 0) return;
@@ -521,6 +529,7 @@ export default function MeetingRecorder() {
         console.log(`✅ システム音声トラック取得: ${systemAudioTracks.length}個`);
 
         const audioContext = new AudioContext();
+        audioContextRef.current = audioContext; // Refに保存
         const systemSource = audioContext.createMediaStreamSource(systemStream);
         const destination = audioContext.createMediaStreamDestination();
 
@@ -542,91 +551,104 @@ export default function MeetingRecorder() {
       setActiveStream(stream);
       setSegmentNumber(0);
       setCurrentAudioChunks([]);
+      allChunksRef.current = []; // クリア
+
+      // サポートされているMIMEタイプを検出
+      const getSupportedMimeType = (): { mimeType: string; extension: string } => {
+        const types = [
+          { mimeType: 'audio/webm;codecs=opus', extension: 'webm' },
+          { mimeType: 'audio/webm', extension: 'webm' },
+          { mimeType: 'audio/mp4', extension: 'mp4' },
+          { mimeType: 'audio/ogg;codecs=opus', extension: 'ogg' },
+          { mimeType: 'audio/wav', extension: 'wav' },
+        ];
+        for (const type of types) {
+          if (MediaRecorder.isTypeSupported(type.mimeType)) return type;
+        }
+        return { mimeType: '', extension: 'webm' };
+      };
+
+      const { mimeType, extension } = getSupportedMimeType();
+      setRecordedMimeType(mimeType || "audio/webm");
+      setRecordedFileExtension(extension);
 
       let currentRecorder: MediaRecorder | null = null;
-      let allChunks: Blob[] = [];
       let currentSegmentNum = 0;
+      const segmentSeconds = segmentDuration * 60;
 
-      const initRecorder = () => {
-        const newRecorder = new MediaRecorder(stream);
+      const startNewSegment = () => {
+        if (!stream.active) return;
+        currentSegmentNum++;
+        const mySegmentNum = currentSegmentNum; // このセグメントの番号を固定
+        
+        const options: MediaRecorderOptions = {
+          mimeType: mimeType || undefined,
+        };
+        // モバイル環境ではビットレートを制限してメモリ負荷を軽減
+        if (isIOS || /Android/i.test(navigator.userAgent)) {
+          options.audioBitsPerSecond = 120000; // 120kbps
+        }
+
+        const recorder = new MediaRecorder(stream, options);
         const segmentChunks: Blob[] = [];
 
-        newRecorder.ondataavailable = (e) => {
+        recorder.ondataavailable = (e) => {
           if (e.data.size > 0) {
-            console.log(`📊 データ受信: ${e.data.size} bytes (${(e.data.size / 1024 / 1024).toFixed(2)} MB)`);
             segmentChunks.push(e.data);
-            allChunks.push(e.data);
-            setCurrentAudioChunks([...allChunks]);
+            allChunksRef.current.push(e.data);
+            setCurrentAudioChunks([...allChunksRef.current]);
           }
         };
 
-        newRecorder.onstop = async () => {
+        recorder.onstop = async () => {
+          if (segmentChunks.length > 0) {
+            const audioBlob = new Blob(segmentChunks, { type: recorder.mimeType || mimeType || "audio/webm" });
+            console.log(`📦 セグメント ${mySegmentNum} 録音完了 (${audioBlob.size} bytes)`);
+
+            // 最後のセグメントまたは停止時の処理
+            if (isManualStopRef.current || !isRecording) {
+              console.log(`🏁 最終セグメント ${mySegmentNum} の文字起こしを開始`);
+            } else {
+              // 切り替え時の待機（レート制限対策）
+              const waitMs = Math.max(recommendedWaitMs, 5000);
+              if (mySegmentNum > 1) await new Promise(r => setTimeout(r, waitMs));
+            }
+            
+            await transcribeSegment(audioBlob, mySegmentNum);
+          }
+          
           if (isManualStopRef.current) {
-            console.log(`🛑 録音停止 - 最終処理開始`);
-
-            if (segmentChunks.length > 0) {
-              currentSegmentNum += 1;
-              const audioBlob = new Blob(segmentChunks, { type: "audio/webm" });
-              console.log(`🎬 最終セグメント ${currentSegmentNum} を文字起こし開始 (${audioBlob.size} bytes)`);
-
-              if (currentSegmentNum > 1) {
-                const waitMs = Math.max(recommendedWaitMs, 15000);
-                console.log(`⏱️  最終セグメント: Rate limit対策で${waitMs / 1000}秒待機`);
-                await new Promise(resolve => setTimeout(resolve, waitMs));
-              }
-
-              await transcribeSegment(audioBlob, currentSegmentNum);
-            }
-
-            stream.getTracks().forEach((track) => track.stop());
-            setActiveStream(null);
-
-            if (autoGenerateSummary) {
-              // 全セグメントの終了を待つ必要があるため、少し長めに待機
-              console.log("️️⏹️ 録音終了。残りの文字起こし完了を待って議事録を生成します...");
-              const checkAndGenerate = () => {
-                if (processingSegments.size === 0) {
-                   generateSummary();
-                } else {
-                   setTimeout(checkAndGenerate, 2000);
-                }
-              };
-              setTimeout(checkAndGenerate, 3000);
-            }
-          } else {
-            console.log(`🔄 セグメント完了 - 文字起こしして再起動`);
-
-            if (segmentChunks.length > 0 && stream.active) {
-              currentSegmentNum += 1;
-              const audioBlob = new Blob(segmentChunks, { type: "audio/webm" });
-              console.log(`🎬 セグメント ${currentSegmentNum} を文字起こし開始 (${audioBlob.size} bytes, ${(audioBlob.size / 1024 / 1024).toFixed(2)} MB)`);
-
-              if (currentSegmentNum > 1) {
-                const waitMs = Math.max(recommendedWaitMs, 15000);
-                console.log(`⏱️  セグメント ${currentSegmentNum}: Rate limit対策で${waitMs / 1000}秒待機`);
-                await new Promise(resolve => setTimeout(resolve, waitMs));
-              }
-
-              transcribeSegment(audioBlob, currentSegmentNum);
-              setSegmentNumber(currentSegmentNum);
-
-              if (stream.active) {
-                console.log(`▶️  セグメント ${currentSegmentNum + 1} の録音開始`);
-                currentRecorder = initRecorder();
-                currentRecorder.start();
-                setMediaRecorder(currentRecorder);
-              }
-            }
+            handleFinalProcessing(stream);
           }
         };
 
-        return newRecorder;
+        recorder.onerror = (e) => {
+          console.error(`❌ MediaRecorder Error (Seg ${currentSegmentNum}):`, e);
+          setError("録音中にエラーが発生しました。");
+        };
+
+        recorder.start();
+        currentRecorder = recorder;
+        setMediaRecorder(recorder);
+      };
+
+      const handleFinalProcessing = (st: MediaStream) => {
+        st.getTracks().forEach((track) => track.stop());
+        setActiveStream(null);
+        if (autoGenerateSummary) {
+          const checkAndGenerate = () => {
+            if (processingSegments.size === 0) {
+              generateSummary();
+            } else {
+              setTimeout(checkAndGenerate, 2000);
+            }
+          };
+          setTimeout(checkAndGenerate, 3000);
+        }
       };
 
       isManualStopRef.current = false;
-      currentRecorder = initRecorder();
-      currentRecorder.start();
-      setMediaRecorder(currentRecorder);
+      startNewSegment();
       setIsRecording(true);
       setError(null);
 
@@ -635,12 +657,15 @@ export default function MeetingRecorder() {
         setRecordingTime((prev) => {
           const newTime = prev + 1;
 
-          if (newTime > 0 && newTime % 150 === 0 && currentRecorder?.state === "recording") {
-            console.log(`⏰ ${(newTime / 60).toFixed(1)}分経過 - セグメント区切り`);
-            isManualStopRef.current = false;
-            currentRecorder.stop();
+          // セグメント切り替えタイミング（隙間なし）
+          if (enableSegmentation && newTime > 0 && newTime % segmentSeconds === 0 && !isManualStopRef.current) {
+            console.log(`⏰ ${segmentDuration}分経過 - セグメント切り替え（ハンドオーバー）`);
+            const oldRecorder = currentRecorder;
+            startNewSegment(); // 先に次を開始
+            if (oldRecorder && oldRecorder.state === "recording") {
+              oldRecorder.stop(); // その後前を停止
+            }
           }
-
           return newTime;
         });
       }, 1000);
@@ -868,10 +893,10 @@ export default function MeetingRecorder() {
 
       // 録音した音声またはアップロードされた音声ファイルを取得
       let finalAudioBlob: Blob | null = null;
-      let finalFileName = "recording.webm";
+      let finalFileName = `recording.${recordedFileExtension}`;
 
       if (currentAudioChunks.length > 0) {
-        finalAudioBlob = new Blob(currentAudioChunks, { type: "audio/webm" });
+        finalAudioBlob = new Blob(currentAudioChunks, { type: recordedMimeType });
       } else if (uploadedAudioFile) {
         finalAudioBlob = uploadedAudioFile;
         finalFileName = uploadedAudioFile.name;
@@ -1607,6 +1632,34 @@ export default function MeetingRecorder() {
               議事録作成後、自動的にGoogle Driveに保存する
               {!isDriveConnected && <span style={{ fontSize: 11, color: "#666" }}>（Drive連携が必要です）</span>}
             </label>
+            <div style={{ borderTop: "1px solid var(--card-border)", marginTop: 4, paddingTop: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "#667eea", marginBottom: 4 }}>長時間の録音設定</div>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, marginBottom: 4 }}>
+                <input
+                  type="checkbox"
+                  checked={enableSegmentation}
+                  onChange={(e) => setEnableSegmentation(e.target.checked)}
+                  style={{ width: 16, height: 16 }}
+                />
+                セグメント分割を有効にする（推奨）
+              </label>
+              {enableSegmentation && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: 24 }}>
+                  <span style={{ fontSize: 12 }}>分割間隔:</span>
+                  <select 
+                    value={segmentDuration} 
+                    onChange={(e) => setSegmentDuration(Number(e.target.value))}
+                    style={{ padding: "2px 4px", fontSize: 12, border: "1px solid var(--card-border)", borderRadius: 4 }}
+                  >
+                    <option value={1}>1分ごと</option>
+                    <option value={3}>3分ごと</option>
+                    <option value={5}>5分ごと</option>
+                    <option value={10}>10分ごと</option>
+                  </select>
+                  <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>※Vercelの制限があるため5分以下を推奨</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
