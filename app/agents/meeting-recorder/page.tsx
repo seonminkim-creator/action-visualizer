@@ -1102,8 +1102,10 @@ export default function MeetingRecorder() {
     return `${date.getFullYear()}年${date.getMonth() + 1}月`;
   };
 
-  async function generateSummary(textOverride?: string): Promise<void> {
-    const currentText = (textOverride || transcriptRef.current || transcript).trim();
+  async function generateSummary(textOverride?: string | any): Promise<void> {
+    // textOverrideがMouseEventなどのオブジェクトの場合を考慮して文字列チェック
+    const actualOverride = typeof textOverride === 'string' ? textOverride : '';
+    const currentText = (actualOverride || transcriptRef.current || transcript || "").trim();
     
     if (!currentText) {
       setError("会議の内容を入力してください（文字起こしが終わっていない可能性があります）");
@@ -1116,7 +1118,7 @@ export default function MeetingRecorder() {
     setProcessingTime(null);
     setResult(null);
 
-    const charCount = transcript.trim().length;
+    const charCount = currentText.length;
     if (charCount > 15000) {
       setProcessingStage("議事録を生成中... (長文のため最大50秒)");
     } else if (charCount > 5000) {
